@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Valor Ev+ — controle de entradas</title>
+<title>Método 1.7 — controle de entradas</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -379,30 +379,6 @@
     margin-top:4px;
   }
 
-  .profit-col-labels{grid-template-columns: 1.6fr 0.7fr 0.6fr 0.75fr 0.7fr 0.8fr;}
-  .profit-row{
-    display:grid;
-    grid-template-columns: 1.6fr 0.7fr 0.6fr 0.75fr 0.7fr 0.8fr;
-    gap:10px;
-    align-items:center;
-    padding:14px;
-    border-bottom:1px solid var(--border);
-  }
-  .profit-row:last-child{border-bottom:none;}
-  @media (max-width:760px){
-    .profit-row{
-      grid-template-columns:1fr;
-      row-gap:6px;
-    }
-    .profit-row .entry-num{
-      text-align:left;
-      display:flex;
-      justify-content:space-between;
-      font-size:13px;
-    }
-    .profit-row .entry-num .k{display:inline;margin-right:8px;font-size:10.5px;color:var(--text-faint);font-weight:400;text-transform:uppercase;letter-spacing:.03em;}
-  }
-
   /* ---------- Calculadora do dia ---------- */
   .calc-row{
     display:grid;
@@ -499,19 +475,21 @@
 
   <header class="hero">
     <div class="hero-title">
-      <h1>Valor Ev+</h1>
-      <p>Registro de entradas: compara a média da análise com a linha da casa e sinaliza quando a margem de segurança bate o mínimo de 1.70.</p>
+      <h1>Método 1.7</h1>
+      <p>Registro de entradas: compara a média da análise com a linha da casa e sinaliza quando a margem de segurança alcança o EV+.</p>
     </div>
   </header>
 
   <nav class="tabs" id="tabs">
     <button class="tab-btn active" data-view="entradas">Entradas</button>
-    <button class="tab-btn" data-view="lucros">Lucros</button>
     <button class="tab-btn" data-view="calculadora">Calculadora do dia</button>
     <button class="tab-btn" data-view="ganhos">Banca - Ganhos/Perdas</button>
   </nav>
 
-  <div class="grid" id="view-entradas">
+  <div id="view-entradas">
+    <div class="profit-summary" id="profit-summary"></div>
+
+    <div class="grid">
 
     <section class="panel">
       <h2 id="form-title">Nova entrada</h2>
@@ -615,25 +593,8 @@
       <div id="entries-container"></div>
     </section>
 
-  </div>
-
-  <section class="panel" id="view-lucros" style="display:none;">
-    <h2>Lucros em unidades</h2>
-    <p class="sub">Marque cada entrada como Green ou Red na aba Entradas para ela entrar nesse balanço.</p>
-
-    <div class="profit-summary" id="profit-summary"></div>
-
-    <div class="list-col-labels profit-col-labels">
-      <span>Time / mercado</span>
-      <span style="text-align:right;">Unidades</span>
-      <span style="text-align:right;">Odd</span>
-      <span style="text-align:right;">Resultado</span>
-      <span style="text-align:right;">Lucro</span>
-      <span style="text-align:right;">Saldo acum.</span>
     </div>
-
-    <div id="profit-container"></div>
-  </section>
+  </div>
 
   <div class="grid" id="view-calculadora" style="display:none;">
     <section class="panel">
@@ -920,6 +881,7 @@
   }
 
   function render(){
+    renderProfitSummary();
     const total = entries.length;
     const withMargem = entries.map(en => ({...en, margem: calcMargem(en.media, en.linha)}));
     const safeCount = withMargem.filter(en => isSafe(en.margem)).length;
@@ -995,15 +957,13 @@
     if(!btn) return;
     const view = btn.dataset.view;
     [...document.getElementById('tabs').children].forEach(b => b.classList.toggle('active', b === btn));
-    document.getElementById('view-entradas').style.display = view === 'entradas' ? 'grid' : 'none';
-    document.getElementById('view-lucros').style.display = view === 'lucros' ? 'block' : 'none';
+    document.getElementById('view-entradas').style.display = view === 'entradas' ? 'block' : 'none';
     document.getElementById('view-calculadora').style.display = view === 'calculadora' ? 'grid' : 'none';
     document.getElementById('view-ganhos').style.display = view === 'ganhos' ? 'block' : 'none';
-    if(view === 'lucros') renderLucros();
     if(view === 'ganhos') renderGanhos();
   });
 
-  function renderLucros(){
+  function renderProfitSummary(){
     const settled = entries.filter(en => en.resultado === 'green' || en.resultado === 'red');
     const totalStaked = settled.reduce((sum, en) => sum + (en.unidades != null ? en.unidades : 1), 0);
     const totalProfit = settled.reduce((sum, en) => sum + calcLucro(en), 0);
@@ -1023,43 +983,6 @@
       <div class="profit-card"><span class="num warn">${redCount}</span><span class="label">red</span></div>
       <div class="profit-card"><span class="num">${pendingCount}</span><span class="label">pendentes</span></div>
     `;
-
-    const profitContainer = document.getElementById('profit-container');
-    if(settled.length === 0){
-      profitContainer.innerHTML = `<div class="empty-state">Nenhuma entrada com resultado marcado ainda. Vá em Entradas e marque Green ou Red.</div>`;
-      return;
-    }
-
-    // ordem cronológica (mais antiga primeiro) para o saldo acumulado fazer sentido
-    // usa a data informada da entrada; se não houver, cai para a data de criação
-    const chronological = [...settled].sort((a,b) => {
-      const ta = a.data ? new Date(a.data).getTime() : (a.createdAt && a.createdAt.toMillis ? a.createdAt.toMillis() : 0);
-      const tb = b.data ? new Date(b.data).getTime() : (b.createdAt && b.createdAt.toMillis ? b.createdAt.toMillis() : 0);
-      return ta - tb;
-    });
-
-    let running = 0;
-    const rows = chronological.map(en => {
-      const lucro = calcLucro(en);
-      running += lucro;
-      const unidades = en.unidades != null ? en.unidades : 1;
-      return `
-        <div class="profit-row">
-          <div class="entry-team">
-            <div class="name">${escapeHtml(en.time)}</div>
-            <div class="meta">${en.data ? formatDate(en.data) + ' · ' : ''}${escapeHtml(en.mercado)} · ${en.mandante}</div>
-          </div>
-          <div class="entry-num"><span class="k">Unid.</span>${unidades.toFixed(2)}</div>
-          <div class="entry-num"><span class="k">Odd</span>${en.odd.toFixed(2)}</div>
-          <div class="entry-status"><span class="badge ${en.resultado === 'green' ? 'safe' : 'warn'}">${en.resultado === 'green' ? 'Green' : 'Red'}</span></div>
-          <div class="entry-num"><span class="k">Lucro</span><span style="color:${lucro >= 0 ? 'var(--safe)' : 'var(--warn)'}">${(lucro >= 0 ? '+' : '') + lucro.toFixed(2)}</span></div>
-          <div class="entry-num"><span class="k">Saldo</span>${(running >= 0 ? '+' : '') + running.toFixed(2)}</div>
-        </div>
-      `;
-    });
-
-    // mostra do mais recente pro mais antigo, mantendo o saldo já calculado em ordem cronológica
-    profitContainer.innerHTML = rows.reverse().join('');
   }
 
   // ---------------------------------------------------------------
