@@ -486,11 +486,11 @@
 
         <div class="row-2">
           <div class="field">
-            <label for="f-media">Média (análise)</label>
+            <label for="f-media">Média (Tip Score)</label>
             <input type="number" id="f-media" step="0.01" placeholder="4.30" required>
           </div>
           <div class="field">
-            <label for="f-linha">Linha (casa)</label>
+            <label for="f-linha">Linha (Bet's)</label>
             <input type="number" id="f-linha" step="0.25" placeholder="2.50" required>
           </div>
         </div>
@@ -528,8 +528,8 @@
 
       <div class="list-col-labels">
         <span>Time / mercado</span>
-        <span style="text-align:right;">Média</span>
-        <span style="text-align:right;">Linha</span>
+        <span style="text-align:right;">Média (Tip Score)</span>
+        <span style="text-align:right;">Linha (Bet's)</span>
         <span style="text-align:right;">Odd</span>
         <span style="text-align:right;">Margem EV+</span>
         <span style="text-align:right;">Unid.</span>
@@ -805,8 +805,8 @@
             <div class="name">${escapeHtml(en.time)}</div>
             <div class="meta">${en.data ? formatDate(en.data) + ' · ' : ''}${escapeHtml(en.mercado)} · ${en.mandante}${en.qtdJogos != null ? ' · últ. ' + en.qtdJogos + ' jogos' : ''}</div>
           </div>
-          <div class="entry-num"><span class="k">Média</span>${en.media.toFixed(2)}</div>
-          <div class="entry-num"><span class="k">Linha</span>${en.linha.toFixed(2)}</div>
+          <div class="entry-num"><span class="k">Média (Tip Score)</span>${en.media.toFixed(2)}</div>
+          <div class="entry-num"><span class="k">Linha (Bet's)</span>${en.linha.toFixed(2)}</div>
           <div class="entry-num"><span class="k">Odd</span>${en.odd.toFixed(2)}</div>
           <div class="entry-num margem-ev"><span class="k">Margem EV+</span>${(en.margem >= 0 ? '+' : '') + en.margem.toFixed(2)}</div>
           <div class="entry-num"><span class="k">Unid.</span>${unidades.toFixed(2)}</div>
