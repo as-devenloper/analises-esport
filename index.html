@@ -481,7 +481,7 @@
         <div class="row-2">
           <div class="field">
             <label for="f-odd">Odd (casa)</label>
-            <input type="number" id="f-odd" step="0.01" placeholder="1.85" required>
+            <input type="number" id="f-odd" step="0.01" min="1.50" placeholder="1.85" required>
           </div>
           <div class="field">
             <label for="f-unidades">Unidades apostadas</label>
@@ -650,6 +650,11 @@
       odd: parseFloat(document.getElementById('f-odd').value),
       unidades: parseFloat(document.getElementById('f-unidades').value),
     };
+
+    if(data.odd < 1.50){
+      alert('A odd da casa precisa ser no mínimo 1.50.');
+      return;
+    }
 
     submitBtn.disabled = true;
     submitBtn.textContent = 'Salvando…';
