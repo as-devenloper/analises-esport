@@ -201,6 +201,7 @@
     font-size:14px;
   }
   .list-stats strong.safe{color:var(--safe);}
+  .list-stats strong.warn{color:var(--warn);}
   .filters{display:flex;gap:6px;justify-self:end;}
   .filters button{
     background:transparent;
@@ -402,6 +403,32 @@
     .profit-row .entry-num .k{display:inline;margin-right:8px;font-size:10.5px;color:var(--text-faint);font-weight:400;text-transform:uppercase;letter-spacing:.03em;}
   }
 
+  /* ---------- Calculadora do dia ---------- */
+  .calc-row{
+    display:grid;
+    grid-template-columns: 1fr 0.6fr 0.6fr 0.7fr 40px;
+    gap:10px;
+    align-items:center;
+    padding:14px;
+    border-bottom:1px solid var(--border);
+  }
+  .calc-row:last-child{border-bottom:none;}
+  @media (max-width:760px){
+    .calc-row{
+      grid-template-columns:1fr;
+      row-gap:6px;
+      position:relative;
+    }
+    .calc-row .entry-num{
+      text-align:left;
+      display:flex;
+      justify-content:space-between;
+      font-size:13px;
+    }
+    .calc-row .entry-num .k{display:inline;margin-right:8px;font-size:10.5px;color:var(--text-faint);font-weight:400;text-transform:uppercase;letter-spacing:.03em;}
+    .calc-row .entry-actions{position:absolute;top:14px;right:0;}
+  }
+
   footer.note{
     margin-top:20px;
     font-size:12px;
@@ -422,6 +449,7 @@
   <nav class="tabs" id="tabs">
     <button class="tab-btn active" data-view="entradas">Entradas</button>
     <button class="tab-btn" data-view="lucros">Lucros</button>
+    <button class="tab-btn" data-view="calculadora">Calculadora do dia</button>
   </nav>
 
   <div class="grid" id="view-entradas">
@@ -547,6 +575,57 @@
 
     <div id="profit-container"></div>
   </section>
+
+  <div class="grid" id="view-calculadora" style="display:none;">
+    <section class="panel">
+      <h2>Nova aposta</h2>
+      <p class="sub">Só pra somar o dia — nada aqui fica salvo, some se recarregar a página.</p>
+
+      <form id="calc-form">
+        <div class="row-2">
+          <div class="field">
+            <label for="c-odd">Odd</label>
+            <input type="number" id="c-odd" step="0.01" min="1.01" placeholder="1.85" required>
+          </div>
+          <div class="field">
+            <label for="c-valor">Valor apostado (R$)</label>
+            <input type="number" id="c-valor" step="0.01" min="0" placeholder="50.00" required>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Resultado</label>
+          <div class="toggle-group" id="c-resultado-group">
+            <button type="button" data-val="green" class="active">Green</button>
+            <button type="button" data-val="red">Red</button>
+          </div>
+        </div>
+
+        <button type="submit" class="primary">Adicionar</button>
+        <button type="button" class="ghost" id="calc-clear">Limpar tudo</button>
+      </form>
+    </section>
+
+    <section class="panel">
+      <div class="list-header" style="grid-template-columns:1fr auto;">
+        <h2>Apostas de hoje</h2>
+        <div class="list-stats" style="justify-self:end;">
+          <span><strong id="calc-stat-total">R$ 0,00</strong> apostado</span>
+          <span><strong id="calc-stat-lucro">R$ 0,00</strong> no dia</span>
+        </div>
+      </div>
+
+      <div class="list-col-labels" style="grid-template-columns: 1fr 0.6fr 0.6fr 0.7fr 40px;">
+        <span>#</span>
+        <span style="text-align:right;">Odd</span>
+        <span style="text-align:right;">Valor</span>
+        <span style="text-align:right;">Resultado</span>
+        <span></span>
+      </div>
+
+      <div id="calc-container"></div>
+    </section>
+  </div>
 
   <footer class="note" id="conn-footer" style="display:none;"><span id="conn-status"></span></footer>
 </div>
@@ -833,6 +912,7 @@
     [...document.getElementById('tabs').children].forEach(b => b.classList.toggle('active', b === btn));
     document.getElementById('view-entradas').style.display = view === 'entradas' ? 'grid' : 'none';
     document.getElementById('view-lucros').style.display = view === 'lucros' ? 'block' : 'none';
+    document.getElementById('view-calculadora').style.display = view === 'calculadora' ? 'grid' : 'none';
     if(view === 'lucros') renderLucros();
   });
 
@@ -894,6 +974,83 @@
     // mostra do mais recente pro mais antigo, mantendo o saldo já calculado em ordem cronológica
     profitContainer.innerHTML = rows.reverse().join('');
   }
+
+  // ---------------------------------------------------------------
+  // Calculadora do dia — só em memória, nada é salvo no Firestore
+  // ---------------------------------------------------------------
+  let calcEntries = [];
+  let calcResultadoVal = 'green';
+  let calcNextId = 1;
+
+  const calcForm = document.getElementById('calc-form');
+  const calcResultadoGroup = document.getElementById('c-resultado-group');
+  const calcContainer = document.getElementById('calc-container');
+
+  calcResultadoGroup.addEventListener('click', (e) => {
+    const btn = e.target.closest('button');
+    if(!btn) return;
+    calcResultadoVal = btn.dataset.val;
+    [...calcResultadoGroup.children].forEach(b => b.classList.toggle('active', b === btn));
+  });
+
+  calcForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const odd = parseFloat(document.getElementById('c-odd').value);
+    const valor = parseFloat(document.getElementById('c-valor').value);
+    calcEntries.push({ id: calcNextId++, odd, valor, resultado: calcResultadoVal });
+    calcForm.reset();
+    calcResultadoVal = 'green';
+    [...calcResultadoGroup.children].forEach(b => b.classList.toggle('active', b.dataset.val === 'green'));
+    renderCalc();
+  });
+
+  document.getElementById('calc-clear').addEventListener('click', () => {
+    if(calcEntries.length === 0) return;
+    if(!confirm('Limpar todas as apostas do dia?')) return;
+    calcEntries = [];
+    renderCalc();
+  });
+
+  function formatBRL(n){
+    return 'R$ ' + n.toFixed(2).replace('.', ',');
+  }
+
+  function renderCalc(){
+    const totalApostado = calcEntries.reduce((sum, c) => sum + c.valor, 0);
+    const lucroDia = calcEntries.reduce((sum, c) => sum + (c.resultado === 'green' ? c.valor * (c.odd - 1) : -c.valor), 0);
+
+    document.getElementById('calc-stat-total').textContent = formatBRL(totalApostado);
+    const lucroEl = document.getElementById('calc-stat-lucro');
+    lucroEl.textContent = (lucroDia >= 0 ? '+' : '-') + formatBRL(Math.abs(lucroDia));
+    lucroEl.className = lucroDia >= 0 ? 'safe' : 'warn';
+
+    if(calcEntries.length === 0){
+      calcContainer.innerHTML = `<div class="empty-state">Nenhuma aposta adicionada ainda hoje.</div>`;
+      return;
+    }
+
+    calcContainer.innerHTML = calcEntries.map((c, idx) => {
+      const lucro = c.resultado === 'green' ? c.valor * (c.odd - 1) : -c.valor;
+      return `
+        <div class="calc-row">
+          <div class="entry-num" style="text-align:left;"><span class="k">#</span>${idx + 1}</div>
+          <div class="entry-num"><span class="k">Odd</span>${c.odd.toFixed(2)}</div>
+          <div class="entry-num"><span class="k">Valor</span>${formatBRL(c.valor)}</div>
+          <div class="entry-status"><span class="badge ${c.resultado === 'green' ? 'safe' : 'warn'}">${c.resultado === 'green' ? 'Green' : 'Red'}</span></div>
+          <div class="entry-actions">
+            <button class="icon-btn" title="Remover" onclick="removeCalcEntry(${c.id})">✕</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function removeCalcEntry(id){
+    calcEntries = calcEntries.filter(c => c.id !== id);
+    renderCalc();
+  }
+
+  renderCalc();
 
   render();
 </script>
