@@ -429,18 +429,6 @@
     .calc-row .entry-actions{position:absolute;top:14px;right:0;}
   }
 
-  .send-day-box{
-    margin-top:16px;
-    padding-top:16px;
-    border-top:1px solid var(--border);
-    display:flex;
-    align-items:center;
-    gap:14px;
-    flex-wrap:wrap;
-  }
-  .send-day-box button{width:auto;padding:10px 18px;}
-  #calc-send-status{font-size:12.5px;color:var(--safe);}
-
   /* ---------- Ganhos/Perdas ---------- */
   .month-group{margin-bottom:18px;}
   .month-group:last-child{margin-bottom:0;}
@@ -458,17 +446,46 @@
   .month-header .month-total.safe{color:var(--safe);}
   .month-header .month-total.warn{color:var(--warn);}
   .month-body{border:1px solid var(--border);border-top:none;border-radius:0 0 8px 8px;overflow:hidden;}
+  .day-item:last-child .day-row{border-bottom:none;}
   .day-row{
     display:flex;
+    width:100%;
     justify-content:space-between;
     padding:10px 14px;
     border-bottom:1px solid var(--border);
     font-size:13.5px;
+    background:transparent;
+    border-left:none;
+    border-right:none;
+    border-top:none;
+    color:inherit;
+    font-family:inherit;
+    text-align:left;
+    cursor:pointer;
   }
-  .day-row:last-child{border-bottom:none;}
+  .day-row:hover{background:var(--surface-2);}
   .day-row .day-valor{font-family:var(--font-mono);font-weight:600;}
   .day-row .day-valor.safe{color:var(--safe);}
   .day-row .day-valor.warn{color:var(--warn);}
+
+  .day-detail{
+    background:var(--bg);
+    border-bottom:1px solid var(--border);
+    padding:4px 14px 4px 26px;
+  }
+  .day-item:last-child .day-detail{border-bottom:none;}
+  .movement-row{
+    display:flex;
+    align-items:center;
+    gap:16px;
+    padding:9px 0;
+    font-size:12.5px;
+    color:var(--text-dim);
+    font-family:var(--font-mono);
+    border-bottom:1px dashed var(--border);
+  }
+  .movement-row:last-child{border-bottom:none;}
+  .movement-row .icon-btn{margin-left:auto;font-family:var(--font-head);}
 
   footer.note{
     margin-top:20px;
@@ -621,7 +638,7 @@
   <div class="grid" id="view-calculadora" style="display:none;">
     <section class="panel">
       <h2>Nova aposta</h2>
-      <p class="sub">Só pra somar o dia — nada aqui fica salvo, some se recarregar a página.</p>
+      <p class="sub">Cada aposta adicionada já é salva e soma automaticamente no total do dia (aba Ganhos/Perdas). Essa lista da sessão atual some se recarregar a página, mas as apostas continuam salvas — dá pra ver e apagar cada uma na aba Ganhos/Perdas.</p>
 
       <form id="calc-form">
         <div class="row-2">
@@ -666,11 +683,6 @@
       </div>
 
       <div id="calc-container"></div>
-
-      <div class="send-day-box">
-        <button type="button" class="primary" id="calc-send-day">Enviar total do dia para Ganhos/Perdas</button>
-        <span id="calc-send-status"></span>
-      </div>
     </section>
   </div>
 
@@ -703,7 +715,7 @@
   firebase.initializeApp(firebaseConfig);
   const db = firebase.firestore();
   const entriesRef = db.collection('entries');
-  const ganhosRef = db.collection('ganhosPerdas');
+  const movimentosRef = db.collection('movimentos');
 
   const MIN_MARGEM = 1.70;
 
@@ -736,10 +748,12 @@
     }
   );
 
-  let ganhosEntries = [];
-  ganhosRef.onSnapshot(
+  // Cada aposta enviada pela Calculadora vira um documento aqui —
+  // isso permite listar e apagar movimentações específicas por dia.
+  let movimentosAll = [];
+  movimentosRef.onSnapshot(
     (snapshot) => {
-      ganhosEntries = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      movimentosAll = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       if(document.getElementById('view-ganhos').style.display !== 'none') renderGanhos();
     },
     (err) => console.error(err)
@@ -1044,7 +1058,9 @@
   }
 
   // ---------------------------------------------------------------
-  // Calculadora do dia — só em memória, nada é salvo no Firestore
+  // Calculadora do dia — a lista aqui é só um resumo da sessão atual,
+  // mas cada aposta adicionada já é gravada em 'movimentos', o que
+  // permite ver e apagar cada uma depois, na aba Ganhos/Perdas.
   // ---------------------------------------------------------------
   let calcEntries = [];
   let calcResultadoVal = 'green';
@@ -1061,31 +1077,56 @@
     [...calcResultadoGroup.children].forEach(b => b.classList.toggle('active', b === btn));
   });
 
-  calcForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const odd = parseFloat(document.getElementById('c-odd').value);
-    const valor = parseFloat(document.getElementById('c-valor').value);
-    calcEntries.push({ id: calcNextId++, odd, valor, resultado: calcResultadoVal });
-    calcForm.reset();
-    calcResultadoVal = 'green';
-    [...calcResultadoGroup.children].forEach(b => b.classList.toggle('active', b.dataset.val === 'green'));
-    renderCalc();
-  });
-
-  document.getElementById('calc-clear').addEventListener('click', () => {
-    if(calcEntries.length === 0) return;
-    if(!confirm('Limpar todas as apostas do dia?')) return;
-    calcEntries = [];
-    renderCalc();
-  });
+  function lucroDe(c){
+    return c.resultado === 'green' ? c.valor * (c.odd - 1) : -c.valor;
+  }
 
   function formatBRL(n){
     return 'R$ ' + n.toFixed(2).replace('.', ',');
   }
 
+  calcForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const odd = parseFloat(document.getElementById('c-odd').value);
+    const valor = parseFloat(document.getElementById('c-valor').value);
+    const resultado = calcResultadoVal;
+    const lucro = Math.round(lucroDe({ odd, valor, resultado }) * 100) / 100;
+    const localId = calcNextId++;
+    const entry = { id: localId, odd, valor, resultado, firestoreId: null };
+    calcEntries.push(entry);
+    calcForm.reset();
+    calcResultadoVal = 'green';
+    [...calcResultadoGroup.children].forEach(b => b.classList.toggle('active', b.dataset.val === 'green'));
+    renderCalc();
+
+    try{
+      const docRef = await movimentosRef.add({
+        data: new Date().toISOString().slice(0, 10),
+        odd, valor, resultado, lucro,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      const found = calcEntries.find(c => c.id === localId);
+      if(found) found.firestoreId = docRef.id;
+    } catch(err){
+      console.error(err);
+      alert('Essa aposta não foi salva no total do dia. Confira sua conexão e as regras do Firestore.');
+    }
+  });
+
+  document.getElementById('calc-clear').addEventListener('click', async () => {
+    if(calcEntries.length === 0) return;
+    if(!confirm('Limpar todas as apostas do dia? Isso também remove elas do total salvo.')) return;
+    const toDelete = calcEntries.filter(c => c.firestoreId);
+    calcEntries = [];
+    renderCalc();
+    for(const c of toDelete){
+      try{ await movimentosRef.doc(c.firestoreId).delete(); } catch(err){ console.error(err); }
+    }
+  });
+
   function renderCalc(){
     const totalApostado = calcEntries.reduce((sum, c) => sum + c.valor, 0);
-    const lucroDia = calcEntries.reduce((sum, c) => sum + (c.resultado === 'green' ? c.valor * (c.odd - 1) : -c.valor), 0);
+    const lucroDia = calcEntries.reduce((sum, c) => sum + lucroDe(c), 0);
 
     document.getElementById('calc-stat-total').textContent = formatBRL(totalApostado);
     const lucroEl = document.getElementById('calc-stat-lucro');
@@ -1098,7 +1139,7 @@
     }
 
     calcContainer.innerHTML = calcEntries.map((c, idx) => {
-      const lucro = c.resultado === 'green' ? c.valor * (c.odd - 1) : -c.valor;
+      const lucro = lucroDe(c);
       return `
         <div class="calc-row">
           <div class="entry-num" style="text-align:left;"><span class="k">#</span>${idx + 1}</div>
@@ -1113,66 +1154,60 @@
     }).join('');
   }
 
-  function removeCalcEntry(id){
+  async function removeCalcEntry(id){
+    const entry = calcEntries.find(c => c.id === id);
     calcEntries = calcEntries.filter(c => c.id !== id);
     renderCalc();
+    if(entry && entry.firestoreId){
+      try{ await movimentosRef.doc(entry.firestoreId).delete(); } catch(err){ console.error(err); }
+    }
   }
 
   renderCalc();
 
-  // ---------------------------------------------------------------
-  // Envio do total do dia (calculadora) para a coleção ganhosPerdas
-  // ---------------------------------------------------------------
-  const calcSendBtn = document.getElementById('calc-send-day');
-  const calcSendStatus = document.getElementById('calc-send-status');
+  const MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  let expandedDate = null;
 
-  calcSendBtn.addEventListener('click', async () => {
-    if(calcEntries.length === 0){
-      alert('Adicione ao menos uma aposta antes de enviar o total do dia.');
-      return;
-    }
-    const lucroDia = calcEntries.reduce((sum, c) => sum + (c.resultado === 'green' ? c.valor * (c.odd - 1) : -c.valor), 0);
-    const todayStr = new Date().toISOString().slice(0, 10);
+  function toggleDayDetail(dateStr){
+    expandedDate = (expandedDate === dateStr) ? null : dateStr;
+    renderGanhos();
+  }
 
-    calcSendBtn.disabled = true;
-    calcSendBtn.textContent = 'Enviando…';
+  async function deleteMovimento(id){
+    if(!confirm('Remover essa movimentação? O total do dia é recalculado na hora.')) return;
     try{
-      await ganhosRef.doc(todayStr).set({
-        data: todayStr,
-        valor: Math.round(lucroDia * 100) / 100,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
-      calcSendStatus.textContent = `Total de ${formatBRL(Math.abs(lucroDia))} (${lucroDia >= 0 ? 'ganho' : 'perda'}) enviado para ${formatDate(todayStr)}.`;
+      await movimentosRef.doc(id).delete();
     } catch(err){
       console.error(err);
-      calcSendStatus.style.color = 'var(--warn)';
-      calcSendStatus.textContent = 'Não foi possível enviar. Confira sua conexão e as regras do Firestore.';
-    } finally {
-      calcSendBtn.disabled = false;
-      calcSendBtn.textContent = 'Enviar total do dia para Ganhos/Perdas';
+      alert('Não foi possível remover. Confira sua conexão.');
     }
-  });
-
-  const MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  }
 
   function renderGanhos(){
     const summary = document.getElementById('ganhos-summary');
     const container = document.getElementById('ganhos-container');
 
-    if(ganhosEntries.length === 0){
+    if(movimentosAll.length === 0){
       summary.innerHTML = '';
-      container.innerHTML = `<div class="empty-state">Nenhum total diário enviado ainda. Vá na Calculadora do dia e clique em "Enviar total do dia".</div>`;
+      container.innerHTML = `<div class="empty-state">Nenhuma aposta enviada ainda. Vá na Calculadora do dia e adicione uma aposta.</div>`;
       return;
     }
 
-    const totalGeral = ganhosEntries.reduce((sum, g) => sum + g.valor, 0);
+    const totalGeral = movimentosAll.reduce((sum, m) => sum + m.lucro, 0);
     const now = new Date();
     const currentMonthKey = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
-    const totalMesAtual = ganhosEntries
-      .filter(g => g.data && g.data.slice(0, 7) === currentMonthKey)
-      .reduce((sum, g) => sum + g.valor, 0);
-    const diasPositivos = ganhosEntries.filter(g => g.valor >= 0).length;
-    const diasNegativos = ganhosEntries.filter(g => g.valor < 0).length;
+    const totalMesAtual = movimentosAll
+      .filter(m => m.data && m.data.slice(0, 7) === currentMonthKey)
+      .reduce((sum, m) => sum + m.lucro, 0);
+
+    // agrupa por dia pra saber quantos dias fecharam no positivo/negativo
+    const porDia = {};
+    movimentosAll.forEach(m => {
+      if(!m.data) return;
+      porDia[m.data] = (porDia[m.data] || 0) + m.lucro;
+    });
+    const diasPositivos = Object.values(porDia).filter(v => v >= 0).length;
+    const diasNegativos = Object.values(porDia).filter(v => v < 0).length;
 
     summary.innerHTML = `
       <div class="profit-card"><span class="num ${totalGeral >= 0 ? 'safe' : 'warn'}">${(totalGeral >= 0 ? '+' : '-') + formatBRL(Math.abs(totalGeral))}</span><span class="label">total geral</span></div>
@@ -1182,28 +1217,58 @@
     `;
 
     // agrupa por mês (chave YYYY-MM), do mês mais recente pro mais antigo
-    const groups = {};
-    ganhosEntries.forEach(g => {
-      if(!g.data) return;
-      const key = g.data.slice(0, 7);
-      if(!groups[key]) groups[key] = [];
-      groups[key].push(g);
+    const monthGroups = {};
+    movimentosAll.forEach(m => {
+      if(!m.data) return;
+      const key = m.data.slice(0, 7);
+      if(!monthGroups[key]) monthGroups[key] = [];
+      monthGroups[key].push(m);
     });
 
-    const monthKeys = Object.keys(groups).sort((a, b) => b.localeCompare(a));
+    const monthKeys = Object.keys(monthGroups).sort((a, b) => b.localeCompare(a));
 
-    container.innerHTML = monthKeys.map(key => {
-      const [y, m] = key.split('-');
+    container.innerHTML = monthKeys.map(monthKey => {
+      const [y, m] = monthKey.split('-');
       const monthLabel = MONTH_NAMES[parseInt(m, 10) - 1] + ' de ' + y;
-      const days = groups[key].sort((a, b) => b.data.localeCompare(a.data));
-      const monthTotal = days.reduce((sum, g) => sum + g.valor, 0);
+      const monthTotal = monthGroups[monthKey].reduce((sum, mv) => sum + mv.lucro, 0);
 
-      const rows = days.map(g => `
-        <div class="day-row">
-          <span>${formatDate(g.data)}</span>
-          <span class="day-valor ${g.valor >= 0 ? 'safe' : 'warn'}">${(g.valor >= 0 ? '+' : '-') + formatBRL(Math.abs(g.valor))}</span>
-        </div>
-      `).join('');
+      // dentro do mês, agrupa por dia
+      const dayGroups = {};
+      monthGroups[monthKey].forEach(mv => {
+        if(!dayGroups[mv.data]) dayGroups[mv.data] = [];
+        dayGroups[mv.data].push(mv);
+      });
+      const dayKeys = Object.keys(dayGroups).sort((a, b) => b.localeCompare(a));
+
+      const dayRows = dayKeys.map(dateStr => {
+        const movs = dayGroups[dateStr].sort((a, b) => {
+          const ta = a.createdAt && a.createdAt.toMillis ? a.createdAt.toMillis() : 0;
+          const tb = b.createdAt && b.createdAt.toMillis ? b.createdAt.toMillis() : 0;
+          return ta - tb;
+        });
+        const dayTotal = movs.reduce((sum, mv) => sum + mv.lucro, 0);
+        const isOpen = expandedDate === dateStr;
+
+        const movRows = movs.map(mv => `
+          <div class="movement-row">
+            <span>Odd ${mv.odd.toFixed(2)}</span>
+            <span>${formatBRL(mv.valor)}</span>
+            <span class="badge ${mv.resultado === 'green' ? 'safe' : 'warn'}">${mv.resultado === 'green' ? 'Green' : 'Red'}</span>
+            <span class="${mv.lucro >= 0 ? 'safe' : 'warn'}" style="font-family:var(--font-mono);font-weight:600;">${(mv.lucro >= 0 ? '+' : '-') + formatBRL(Math.abs(mv.lucro))}</span>
+            <button class="icon-btn" title="Remover essa aposta" onclick="deleteMovimento('${mv.id}')">✕</button>
+          </div>
+        `).join('');
+
+        return `
+          <div class="day-item">
+            <button type="button" class="day-row" onclick="toggleDayDetail('${dateStr}')">
+              <span>${isOpen ? '▾' : '▸'} ${formatDate(dateStr)}</span>
+              <span class="day-valor ${dayTotal >= 0 ? 'safe' : 'warn'}">${(dayTotal >= 0 ? '+' : '-') + formatBRL(Math.abs(dayTotal))}</span>
+            </button>
+            <div class="day-detail" style="display:${isOpen ? 'block' : 'none'};">${movRows}</div>
+          </div>
+        `;
+      }).join('');
 
       return `
         <div class="month-group">
@@ -1211,7 +1276,7 @@
             <span>${monthLabel}</span>
             <span class="month-total ${monthTotal >= 0 ? 'safe' : 'warn'}">${(monthTotal >= 0 ? '+' : '-') + formatBRL(Math.abs(monthTotal))}</span>
           </div>
-          <div class="month-body">${rows}</div>
+          <div class="month-body">${dayRows}</div>
         </div>
       `;
     }).join('');
