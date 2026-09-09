@@ -508,7 +508,7 @@
     <button class="tab-btn active" data-view="entradas">Entradas</button>
     <button class="tab-btn" data-view="lucros">Lucros</button>
     <button class="tab-btn" data-view="calculadora">Calculadora do dia</button>
-    <button class="tab-btn" data-view="ganhos">Ganhos/Perdas</button>
+    <button class="tab-btn" data-view="ganhos">Banca - Ganhos/Perdas</button>
   </nav>
 
   <div class="grid" id="view-entradas">
@@ -638,9 +638,14 @@
   <div class="grid" id="view-calculadora" style="display:none;">
     <section class="panel">
       <h2>Nova aposta</h2>
-      <p class="sub">Cada aposta adicionada já é salva e soma automaticamente no total do dia (aba Ganhos/Perdas). Essa lista da sessão atual some se recarregar a página, mas as apostas continuam salvas — dá pra ver e apagar cada uma na aba Ganhos/Perdas.</p>
+      <p class="sub">Cada aposta adicionada já é salva e soma automaticamente no total do dia (aba Banca - Ganhos/Perdas). Essa lista da sessão atual some se recarregar a página, mas as apostas continuam salvas — dá pra ver e apagar cada uma na aba Banca - Ganhos/Perdas.</p>
 
       <form id="calc-form">
+        <div class="field">
+          <label for="c-data">Data</label>
+          <input type="date" id="c-data" required>
+        </div>
+
         <div class="row-2">
           <div class="field">
             <label for="c-odd">Odd</label>
@@ -667,7 +672,7 @@
 
     <section class="panel">
       <div class="list-header" style="grid-template-columns:1fr auto;">
-        <h2>Apostas de hoje</h2>
+        <h2>Apostas desta sessão</h2>
         <div class="list-stats" style="justify-self:end;">
           <span><strong id="calc-stat-total">R$ 0,00</strong> apostado</span>
           <span><strong id="calc-stat-lucro">R$ 0,00</strong> no dia</span>
@@ -675,7 +680,7 @@
       </div>
 
       <div class="list-col-labels" style="grid-template-columns: 1fr 0.6fr 0.6fr 0.7fr 40px;">
-        <span>#</span>
+        <span>Data</span>
         <span style="text-align:right;">Odd</span>
         <span style="text-align:right;">Valor</span>
         <span style="text-align:right;">Resultado</span>
@@ -687,7 +692,7 @@
   </div>
 
   <section class="panel" id="view-ganhos" style="display:none;">
-    <h2>Ganhos/Perdas</h2>
+    <h2>Banca - Ganhos/Perdas</h2>
     <p class="sub">Totais diários enviados pela Calculadora do dia, agrupados por mês.</p>
 
     <div class="profit-summary" id="ganhos-summary"></div>
@@ -1085,23 +1090,31 @@
     return 'R$ ' + n.toFixed(2).replace('.', ',');
   }
 
+  function setCalcDefaultDate(){
+    document.getElementById('c-data').value = new Date().toISOString().slice(0, 10);
+  }
+  setCalcDefaultDate();
+
   calcForm.addEventListener('submit', async (e) => {
     e.preventDefault();
+    const dataStr = document.getElementById('c-data').value;
     const odd = parseFloat(document.getElementById('c-odd').value);
     const valor = parseFloat(document.getElementById('c-valor').value);
     const resultado = calcResultadoVal;
     const lucro = Math.round(lucroDe({ odd, valor, resultado }) * 100) / 100;
     const localId = calcNextId++;
-    const entry = { id: localId, odd, valor, resultado, firestoreId: null };
+    const entry = { id: localId, data: dataStr, odd, valor, resultado, firestoreId: null };
     calcEntries.push(entry);
-    calcForm.reset();
+    document.getElementById('c-odd').value = '';
+    document.getElementById('c-valor').value = '';
+    document.getElementById('c-odd').focus();
     calcResultadoVal = 'green';
     [...calcResultadoGroup.children].forEach(b => b.classList.toggle('active', b.dataset.val === 'green'));
     renderCalc();
 
     try{
       const docRef = await movimentosRef.add({
-        data: new Date().toISOString().slice(0, 10),
+        data: dataStr,
         odd, valor, resultado, lucro,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
@@ -1134,15 +1147,15 @@
     lucroEl.className = lucroDia >= 0 ? 'safe' : 'warn';
 
     if(calcEntries.length === 0){
-      calcContainer.innerHTML = `<div class="empty-state">Nenhuma aposta adicionada ainda hoje.</div>`;
+      calcContainer.innerHTML = `<div class="empty-state">Nenhuma aposta adicionada ainda nesta sessão.</div>`;
       return;
     }
 
-    calcContainer.innerHTML = calcEntries.map((c, idx) => {
+    calcContainer.innerHTML = calcEntries.map((c) => {
       const lucro = lucroDe(c);
       return `
         <div class="calc-row">
-          <div class="entry-num" style="text-align:left;"><span class="k">#</span>${idx + 1}</div>
+          <div class="entry-num" style="text-align:left;"><span class="k">Data</span>${formatDate(c.data)}</div>
           <div class="entry-num"><span class="k">Odd</span>${c.odd.toFixed(2)}</div>
           <div class="entry-num"><span class="k">Valor</span>${formatBRL(c.valor)}</div>
           <div class="entry-status"><span class="badge ${c.resultado === 'green' ? 'safe' : 'warn'}">${c.resultado === 'green' ? 'Green' : 'Red'}</span></div>
