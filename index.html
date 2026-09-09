@@ -256,12 +256,10 @@
     font-size:11.5px;
     color:var(--text-dim);
     margin-top:2px;
-    white-space:nowrap;
-    overflow:hidden;
-    text-overflow:ellipsis;
+    line-height:1.4;
   }
   .entry-num{font-family:var(--font-mono);font-size:14px;text-align:right;}
-  .entry-num .k{display:block;font-size:10.5px;color:var(--text-faint);font-weight:400;text-transform:uppercase;letter-spacing:.03em;}
+  .entry-num .k{display:none;}
   .entry-status{text-align:right;}
   .badge{
     display:inline-block;
@@ -297,7 +295,7 @@
       justify-content:space-between;
       font-size:13px;
     }
-    .entry-num .k{display:inline;margin-right:8px;}
+    .entry-num .k{display:inline;margin-right:8px;font-size:10.5px;color:var(--text-faint);font-weight:400;text-transform:uppercase;letter-spacing:.03em;}
     .entry-status{text-align:left;}
     .entry-actions{position:absolute;top:14px;right:14px;}
   }
@@ -402,7 +400,7 @@
       justify-content:space-between;
       font-size:13px;
     }
-    .profit-row .entry-num .k{display:inline;margin-right:8px;}
+    .profit-row .entry-num .k{display:inline;margin-right:8px;font-size:10.5px;color:var(--text-faint);font-weight:400;text-transform:uppercase;letter-spacing:.03em;}
   }
 
   footer.note{
