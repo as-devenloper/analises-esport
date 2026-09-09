@@ -246,8 +246,9 @@
     border-bottom:1px solid var(--border);
     border-left:3px solid transparent;
   }
-  .entry-row.is-safe{border-left-color:var(--safe);}
-  .entry-row.is-warn{border-left-color:var(--warn);}
+  .entry-row.is-pending{border-left-color:var(--text-faint);}
+  .entry-row.is-green{border-left-color:var(--safe);}
+  .entry-row.is-red{border-left-color:var(--warn);}
   .entry-row:last-child{border-bottom:none;}
 
   .entry-team{min-width:0;}
@@ -259,6 +260,7 @@
     line-height:1.4;
   }
   .entry-num{font-family:var(--font-mono);font-size:14px;text-align:right;}
+  .entry-num.margem-ev{color:var(--safe);font-weight:600;}
   .entry-num .k{display:none;}
   .entry-status{text-align:right;}
   .badge{
@@ -529,7 +531,7 @@
         <span style="text-align:right;">Média</span>
         <span style="text-align:right;">Linha</span>
         <span style="text-align:right;">Odd</span>
-        <span style="text-align:right;">Margem</span>
+        <span style="text-align:right;">Margem EV+</span>
         <span style="text-align:right;">Unid.</span>
         <span style="text-align:right;">Resultado</span>
         <span></span>
@@ -767,7 +769,12 @@
     document.getElementById('stat-safe').textContent = safeCount;
     document.getElementById('stat-pct').textContent = total ? Math.round((safeCount/total)*100) + '%' : '—';
 
-    let list = withMargem.sort((a,b) => b.margem - a.margem);
+    // sempre a entrada mais recente no topo (usa a data informada, com fallback pra criação)
+    let list = withMargem.sort((a,b) => {
+      const ta = a.data ? new Date(a.data).getTime() : (a.createdAt && a.createdAt.toMillis ? a.createdAt.toMillis() : 0);
+      const tb = b.data ? new Date(b.data).getTime() : (b.createdAt && b.createdAt.toMillis ? b.createdAt.toMillis() : 0);
+      return tb - ta;
+    });
     if(currentFilter === 'safe') list = list.filter(en => isSafe(en.margem));
     if(currentFilter === 'warn') list = list.filter(en => !isSafe(en.margem));
 
@@ -777,10 +784,12 @@
     }
 
     container.innerHTML = list.map(en => {
-      const safe = isSafe(en.margem);
       const unidades = en.unidades != null ? en.unidades : 1;
       const resultado = en.resultado || 'pendente';
       let resultadoHtml;
+      let rowClass = 'is-pending';
+      if(resultado === 'green') rowClass = 'is-green';
+      else if(resultado === 'red') rowClass = 'is-red';
       if(resultado === 'pendente'){
         resultadoHtml = `
           <div class="result-buttons">
@@ -791,7 +800,7 @@
         resultadoHtml = `<span class="badge ${resultado === 'green' ? 'safe' : 'warn'} clickable" title="Clique para voltar a pendente" onclick="markResult('${en.id}','pendente')">${resultado === 'green' ? 'Green' : 'Red'}</span>`;
       }
       return `
-        <div class="entry-row ${safe ? 'is-safe' : 'is-warn'}">
+        <div class="entry-row ${rowClass}">
           <div class="entry-team">
             <div class="name">${escapeHtml(en.time)}</div>
             <div class="meta">${en.data ? formatDate(en.data) + ' · ' : ''}${escapeHtml(en.mercado)} · ${en.mandante}${en.qtdJogos != null ? ' · últ. ' + en.qtdJogos + ' jogos' : ''}</div>
@@ -799,7 +808,7 @@
           <div class="entry-num"><span class="k">Média</span>${en.media.toFixed(2)}</div>
           <div class="entry-num"><span class="k">Linha</span>${en.linha.toFixed(2)}</div>
           <div class="entry-num"><span class="k">Odd</span>${en.odd.toFixed(2)}</div>
-          <div class="entry-num"><span class="k">Margem</span>${(en.margem >= 0 ? '+' : '') + en.margem.toFixed(2)}</div>
+          <div class="entry-num margem-ev"><span class="k">Margem EV+</span>${(en.margem >= 0 ? '+' : '') + en.margem.toFixed(2)}</div>
           <div class="entry-num"><span class="k">Unid.</span>${unidades.toFixed(2)}</div>
           <div class="entry-status">${resultadoHtml}</div>
           <div class="entry-actions">
