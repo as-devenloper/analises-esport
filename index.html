@@ -62,28 +62,6 @@
     font-size:14px;
     max-width:46ch;
   }
-  .hero-stats{
-    display:flex;
-    gap:28px;
-  }
-  .stat{
-    text-align:right;
-  }
-  .stat .num{
-    display:block;
-    font-family:var(--font-mono);
-    font-size:26px;
-    font-weight:600;
-    line-height:1.1;
-  }
-  .stat .num.safe{color:var(--safe);}
-  .stat .num.warn{color:var(--warn);}
-  .stat .label{
-    display:block;
-    font-size:12px;
-    color:var(--text-dim);
-    margin-top:4px;
-  }
 
   /* ---------- Layout grid ---------- */
   .grid{
@@ -201,14 +179,29 @@
 
   /* ---------- List panel ---------- */
   .list-header{
-    display:flex;
-    justify-content:space-between;
+    display:grid;
+    grid-template-columns: 1fr auto 1fr;
     align-items:center;
     margin-bottom:6px;
-    flex-wrap:wrap;
-    gap:10px;
+    gap:14px;
   }
-  .filters{display:flex;gap:6px;}
+  .list-header h2{justify-self:start;}
+  .list-stats{
+    justify-self:center;
+    display:flex;
+    gap:20px;
+    font-family:var(--font-mono);
+    font-size:12.5px;
+    color:var(--text-dim);
+    white-space:nowrap;
+  }
+  .list-stats strong{
+    color:var(--text);
+    font-weight:600;
+    font-size:14px;
+  }
+  .list-stats strong.safe{color:var(--safe);}
+  .filters{display:flex;gap:6px;justify-self:end;}
   .filters button{
     background:transparent;
     border:1px solid var(--border);
@@ -222,6 +215,10 @@
   .filters button.active{
     border-color:var(--text);
     color:var(--text);
+  }
+  @media (max-width:700px){
+    .list-header{grid-template-columns:1fr;}
+    .list-header h2, .list-stats, .filters{justify-self:start;}
   }
 
   .list-col-labels{
@@ -420,20 +417,6 @@
       <h1>Valor Ev+</h1>
       <p>Registro de entradas: compara a média da análise com a linha da casa e sinaliza quando a margem de segurança bate o mínimo de 1.70.</p>
     </div>
-    <div class="hero-stats">
-      <div class="stat">
-        <span class="num" id="stat-total">0</span>
-        <span class="label">entradas</span>
-      </div>
-      <div class="stat">
-        <span class="num safe" id="stat-safe">0</span>
-        <span class="label">seguras</span>
-      </div>
-      <div class="stat">
-        <span class="num" id="stat-pct">—</span>
-        <span class="label">% acima do mínimo</span>
-      </div>
-    </div>
   </header>
 
   <nav class="tabs" id="tabs">
@@ -519,6 +502,11 @@
     <section class="panel">
       <div class="list-header">
         <h2>Entradas registradas</h2>
+        <div class="list-stats">
+          <span><strong id="stat-total">0</strong> entradas</span>
+          <span><strong id="stat-safe" class="safe">0</strong> seguras</span>
+          <span><strong id="stat-pct">—</strong> acima do mínimo</span>
+        </div>
         <div class="filters" id="filters">
           <button data-filter="all" class="active">Todas</button>
           <button data-filter="safe">Seguras</button>
