@@ -224,7 +224,7 @@
 
   .list-col-labels{
     display:grid;
-    grid-template-columns: 1.4fr 0.55fr 0.55fr 0.55fr 0.6fr 0.55fr 0.85fr 40px;
+    grid-template-columns: 1.4fr 0.6fr 0.6fr 0.6fr 0.7fr 0.9fr 40px;
     gap:10px;
     padding:10px 14px;
     font-size:11px;
@@ -237,7 +237,7 @@
 
   .entry-row{
     display:grid;
-    grid-template-columns: 1.4fr 0.55fr 0.55fr 0.55fr 0.6fr 0.55fr 0.85fr 40px;
+    grid-template-columns: 1.4fr 0.6fr 0.6fr 0.6fr 0.7fr 0.9fr 40px;
     gap:10px;
     align-items:center;
     padding:14px;
@@ -543,15 +543,9 @@
           </div>
         </div>
 
-        <div class="row-2">
-          <div class="field">
-            <label for="f-odd">Odd (casa)</label>
-            <input type="number" id="f-odd" step="0.01" min="1.50" placeholder="1.85" required>
-          </div>
-          <div class="field">
-            <label for="f-unidades">Unidades apostadas</label>
-            <input type="number" id="f-unidades" step="0.1" min="0" placeholder="1" required>
-          </div>
+        <div class="field">
+          <label for="f-odd">Odd (casa)</label>
+          <input type="number" id="f-odd" step="0.01" min="1.50" placeholder="1.85" required>
         </div>
 
         <div class="preview" id="live-preview">
@@ -565,13 +559,8 @@
     </section>
 
     <section class="panel">
-      <div class="list-header">
+      <div class="list-header" style="grid-template-columns:1fr auto;">
         <h2>Entradas registradas</h2>
-        <div class="list-stats">
-          <span><strong id="stat-total">0</strong> entradas</span>
-          <span><strong id="stat-safe" class="safe">0</strong> seguras</span>
-          <span><strong id="stat-pct">—</strong> acima do mínimo</span>
-        </div>
         <div class="filters" id="filters">
           <button data-filter="all" class="active">Todas</button>
           <button data-filter="safe">Seguras</button>
@@ -585,7 +574,6 @@
         <span style="text-align:right;">Linha (Bet's)</span>
         <span style="text-align:right;">Odd</span>
         <span style="text-align:right;">Margem EV+</span>
-        <span style="text-align:right;">Unid.</span>
         <span style="text-align:right;">Resultado</span>
         <span></span>
       </div>
@@ -773,7 +761,6 @@
       media: parseFloat(document.getElementById('f-media').value),
       linha: parseFloat(document.getElementById('f-linha').value),
       odd: parseFloat(document.getElementById('f-odd').value),
-      unidades: parseFloat(document.getElementById('f-unidades').value),
     };
 
     if(data.odd < 1.50){
@@ -819,7 +806,6 @@
     document.getElementById('f-media').value = entry.media;
     document.getElementById('f-linha').value = entry.linha;
     document.getElementById('f-odd').value = entry.odd;
-    document.getElementById('f-unidades').value = entry.unidades != null ? entry.unidades : 1;
     mandanteVal = entry.mandante;
     [...mandanteGroup.children].forEach(b => b.classList.toggle('active', b.dataset.val === entry.mandante));
     updateLivePreview();
@@ -873,22 +859,11 @@
     // a lista é atualizada automaticamente pelo onSnapshot acima
   }
 
-  function calcLucro(en){
-    const unidades = en.unidades != null ? en.unidades : 1;
-    if(en.resultado === 'green') return Math.round(unidades * (en.odd - 1) * 100) / 100;
-    if(en.resultado === 'red') return -unidades;
-    return null;
-  }
-
   function render(){
     renderProfitSummary();
     const total = entries.length;
     const withMargem = entries.map(en => ({...en, margem: calcMargem(en.media, en.linha)}));
     const safeCount = withMargem.filter(en => isSafe(en.margem)).length;
-
-    document.getElementById('stat-total').textContent = total;
-    document.getElementById('stat-safe').textContent = safeCount;
-    document.getElementById('stat-pct').textContent = total ? Math.round((safeCount/total)*100) + '%' : '—';
 
     // sempre a entrada mais recente no topo (usa a data informada, com fallback pra criação)
     let list = withMargem.sort((a,b) => {
@@ -905,7 +880,6 @@
     }
 
     container.innerHTML = list.map(en => {
-      const unidades = en.unidades != null ? en.unidades : 1;
       const resultado = en.resultado || 'pendente';
       let resultadoHtml;
       let rowClass = 'is-pending';
@@ -930,7 +904,6 @@
           <div class="entry-num"><span class="k">Linha (Bet's)</span>${en.linha.toFixed(2)}</div>
           <div class="entry-num"><span class="k">Odd</span>${en.odd.toFixed(2)}</div>
           <div class="entry-num margem-ev"><span class="k">Margem EV+</span>${(en.margem >= 0 ? '+' : '') + en.margem.toFixed(2)}</div>
-          <div class="entry-num"><span class="k">Unid.</span>${unidades.toFixed(2)}</div>
           <div class="entry-status">${resultadoHtml}</div>
           <div class="entry-actions">
             <button class="icon-btn" title="Editar" onclick="enterEditMode('${en.id}')">✎</button>
@@ -965,19 +938,21 @@
 
   function renderProfitSummary(){
     const settled = entries.filter(en => en.resultado === 'green' || en.resultado === 'red');
-    const totalStaked = settled.reduce((sum, en) => sum + (en.unidades != null ? en.unidades : 1), 0);
-    const totalProfit = settled.reduce((sum, en) => sum + calcLucro(en), 0);
     const greenCount = settled.filter(en => en.resultado === 'green').length;
     const redCount = settled.filter(en => en.resultado === 'red').length;
     const pendingCount = entries.length - settled.length;
     const winRate = settled.length ? Math.round((greenCount / settled.length) * 100) : 0;
-    const roi = totalStaked ? Math.round((totalProfit / totalStaked) * 1000) / 10 : 0;
+
+    const totalEntradas = entries.length;
+    const withMargem = entries.map(en => ({...en, margem: calcMargem(en.media, en.linha)}));
+    const seguras = withMargem.filter(en => isSafe(en.margem)).length;
+    const pctSeguras = totalEntradas ? Math.round((seguras / totalEntradas) * 100) : 0;
 
     const summary = document.getElementById('profit-summary');
     summary.innerHTML = `
-      <div class="profit-card"><span class="num ${totalProfit >= 0 ? 'safe' : 'warn'}">${(totalProfit >= 0 ? '+' : '') + totalProfit.toFixed(2)}</span><span class="label">lucro (unidades)</span></div>
-      <div class="profit-card"><span class="num">${totalStaked.toFixed(2)}</span><span class="label">total apostado</span></div>
-      <div class="profit-card"><span class="num ${roi >= 0 ? 'safe' : 'warn'}">${(roi >= 0 ? '+' : '') + roi}%</span><span class="label">ROI</span></div>
+      <div class="profit-card"><span class="num">${totalEntradas}</span><span class="label">entradas</span></div>
+      <div class="profit-card"><span class="num safe">${seguras}</span><span class="label">seguras</span></div>
+      <div class="profit-card"><span class="num">${pctSeguras}%</span><span class="label">acima do mínimo</span></div>
       <div class="profit-card"><span class="num">${winRate}%</span><span class="label">taxa de acerto</span></div>
       <div class="profit-card"><span class="num safe">${greenCount}</span><span class="label">green</span></div>
       <div class="profit-card"><span class="num warn">${redCount}</span><span class="label">red</span></div>
