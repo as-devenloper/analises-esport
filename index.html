@@ -560,7 +560,7 @@
     <div id="profit-container"></div>
   </section>
 
-  <footer class="note">Margem = Média − Linha. Mínimo de segurança: 1.70. <span id="conn-status">Conectando ao banco de dados…</span></footer>
+  <footer class="note" id="conn-footer" style="display:none;"><span id="conn-status"></span></footer>
 </div>
 
 <script>
@@ -595,18 +595,20 @@
   const cancelBtn = document.getElementById('cancel-edit');
   const formTitle = document.getElementById('form-title');
   const connStatus = document.getElementById('conn-status');
+  const connFooter = document.getElementById('conn-footer');
 
   // Escuta o Firestore em tempo real — qualquer alteração (deste
   // dispositivo ou de outro) atualiza a tela automaticamente.
   entriesRef.orderBy('createdAt', 'desc').onSnapshot(
     (snapshot) => {
       entries = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      connStatus.textContent = 'Conectado.';
+      connFooter.style.display = 'none';
       render();
     },
     (err) => {
       console.error(err);
       connStatus.textContent = 'Erro ao conectar ao banco de dados — confira firebaseConfig e as regras do Firestore.';
+      connFooter.style.display = 'block';
     }
   );
 
