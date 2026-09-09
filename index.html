@@ -448,9 +448,15 @@
       <p class="sub">Preencha os dados do jogo e da casa de aposta.</p>
 
       <form id="entry-form">
-        <div class="field">
-          <label for="f-time">Time</label>
-          <input type="text" id="f-time" placeholder="Ex: Palmeiras" required>
+        <div class="row-2">
+          <div class="field">
+            <label for="f-time">Time</label>
+            <input type="text" id="f-time" placeholder="Ex: Palmeiras" required>
+          </div>
+          <div class="field">
+            <label for="f-data">Data</label>
+            <input type="date" id="f-data" required>
+          </div>
         </div>
 
         <div class="field">
@@ -471,6 +477,11 @@
             <option value="Chutes a gol">
             <option value="Faltas">
           </datalist>
+        </div>
+
+        <div class="field">
+          <label for="f-qtdjogos">Últ. Jogos</label>
+          <input type="number" id="f-qtdjogos" step="1" min="0" placeholder="Ex: 10">
         </div>
 
         <div class="row-2">
@@ -603,6 +614,12 @@
     return Math.round((media - linha) * 100) / 100;
   }
 
+  function setDefaultDate(){
+    const today = new Date().toISOString().slice(0, 10);
+    document.getElementById('f-data').value = today;
+  }
+  setDefaultDate();
+
   function isSafe(margem){
     return margem >= MIN_MARGEM;
   }
@@ -634,8 +651,10 @@
     e.preventDefault();
     const data = {
       time: document.getElementById('f-time').value.trim(),
+      data: document.getElementById('f-data').value,
       mandante: mandanteVal,
       mercado: document.getElementById('f-mercado').value.trim(),
+      qtdJogos: document.getElementById('f-qtdjogos').value ? parseInt(document.getElementById('f-qtdjogos').value, 10) : null,
       media: parseFloat(document.getElementById('f-media').value),
       linha: parseFloat(document.getElementById('f-linha').value),
       odd: parseFloat(document.getElementById('f-odd').value),
@@ -657,6 +676,7 @@
       form.reset();
       mandanteVal = 'Casa';
       [...mandanteGroup.children].forEach(b => b.classList.toggle('active', b.dataset.val === 'Casa'));
+      setDefaultDate();
       updateLivePreview();
     } catch(err){
       console.error(err);
@@ -673,7 +693,9 @@
     if(!entry) return;
     editingId = id;
     document.getElementById('f-time').value = entry.time;
+    document.getElementById('f-data').value = entry.data || '';
     document.getElementById('f-mercado').value = entry.mercado;
+    document.getElementById('f-qtdjogos').value = entry.qtdJogos != null ? entry.qtdJogos : '';
     document.getElementById('f-media').value = entry.media;
     document.getElementById('f-linha').value = entry.linha;
     document.getElementById('f-odd').value = entry.odd;
@@ -697,6 +719,7 @@
   cancelBtn.addEventListener('click', () => {
     exitEditMode();
     form.reset();
+    setDefaultDate();
     updateLivePreview();
   });
 
@@ -712,7 +735,7 @@
     if(!confirm('Excluir esta entrada?')) return;
     try{
       await entriesRef.doc(id).delete();
-      if(editingId === id){ exitEditMode(); form.reset(); updateLivePreview(); }
+      if(editingId === id){ exitEditMode(); form.reset(); setDefaultDate(); updateLivePreview(); }
     } catch(err){
       console.error(err);
       alert('Não foi possível excluir. Confira sua conexão.');
@@ -773,7 +796,7 @@
         <div class="entry-row ${safe ? 'is-safe' : 'is-warn'}">
           <div class="entry-team">
             <div class="name">${escapeHtml(en.time)}</div>
-            <div class="meta">${escapeHtml(en.mercado)} · ${en.mandante}</div>
+            <div class="meta">${en.data ? formatDate(en.data) + ' · ' : ''}${escapeHtml(en.mercado)} · ${en.mandante}${en.qtdJogos != null ? ' · últ. ' + en.qtdJogos + ' jogos' : ''}</div>
           </div>
           <div class="entry-num"><span class="k">Média</span>${en.media.toFixed(2)}</div>
           <div class="entry-num"><span class="k">Linha</span>${en.linha.toFixed(2)}</div>
@@ -794,6 +817,11 @@
     const d = document.createElement('div');
     d.textContent = str;
     return d.innerHTML;
+  }
+
+  function formatDate(isoStr){
+    const [y, m, d] = isoStr.split('-');
+    return `${d}/${m}/${y}`;
   }
 
   document.getElementById('tabs').addEventListener('click', (e) => {
@@ -834,9 +862,10 @@
     }
 
     // ordem cronológica (mais antiga primeiro) para o saldo acumulado fazer sentido
+    // usa a data informada da entrada; se não houver, cai para a data de criação
     const chronological = [...settled].sort((a,b) => {
-      const ta = a.createdAt && a.createdAt.toMillis ? a.createdAt.toMillis() : 0;
-      const tb = b.createdAt && b.createdAt.toMillis ? b.createdAt.toMillis() : 0;
+      const ta = a.data ? new Date(a.data).getTime() : (a.createdAt && a.createdAt.toMillis ? a.createdAt.toMillis() : 0);
+      const tb = b.data ? new Date(b.data).getTime() : (b.createdAt && b.createdAt.toMillis ? b.createdAt.toMillis() : 0);
       return ta - tb;
     });
 
@@ -849,7 +878,7 @@
         <div class="profit-row">
           <div class="entry-team">
             <div class="name">${escapeHtml(en.time)}</div>
-            <div class="meta">${escapeHtml(en.mercado)} · ${en.mandante}</div>
+            <div class="meta">${en.data ? formatDate(en.data) + ' · ' : ''}${escapeHtml(en.mercado)} · ${en.mandante}</div>
           </div>
           <div class="entry-num"><span class="k">Unid.</span>${unidades.toFixed(2)}</div>
           <div class="entry-num"><span class="k">Odd</span>${en.odd.toFixed(2)}</div>
