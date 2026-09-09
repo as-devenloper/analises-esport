@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Valor na Linha — controle de entradas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+  :root{
+    --bg: #10141a;
+    --surface: #171d25;
+    --surface-2: #1d2530;
+    --border: #2a323c;
+    --text: #e8ecef;
+    --text-dim: #8b96a3;
+    --text-faint: #5b6570;
+    --accent: #5b8def;
+    --safe: #4caf7d;
+    --safe-bg: rgba(76,175,125,0.12);
+    --warn: #c75450;
+    --warn-bg: rgba(199,84,80,0.12);
+    --font-head: 'Space Grotesk', sans-serif;
+    --font-mono: 'IBM Plex Mono', monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--font-head);
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:inherit;}
+
+  .app{max-width:1180px;margin:0 auto;padding:32px 24px 80px;}
+
+  /* ---------- Header / hero ---------- */
+  header.hero{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:flex-end;
+    justify-content:space-between;
+    gap:24px;
+    padding-bottom:28px;
+    margin-bottom:28px;
+    border-bottom:1px solid var(--border);
+  }
+  .hero-title h1{
+    font-size:26px;
+    font-weight:600;
+    margin:0 0 6px;
+    letter-spacing:-0.01em;
+  }
+  .hero-title p{
+    margin:0;
+    color:var(--text-dim);
+    font-size:14px;
+    max-width:46ch;
+  }
+  .hero-stats{
+    display:flex;
+    gap:28px;
+  }
+  .stat{
+    text-align:right;
+  }
+  .stat .num{
+    display:block;
+    font-family:var(--font-mono);
+    font-size:26px;
+    font-weight:600;
+    line-height:1.1;
+  }
+  .stat .num.safe{color:var(--safe);}
+  .stat .num.warn{color:var(--warn);}
+  .stat .label{
+    display:block;
+    font-size:12px;
+    color:var(--text-dim);
+    margin-top:4px;
+  }
+
+  /* ---------- Layout grid ---------- */
+  .grid{
+    display:grid;
+    grid-template-columns:340px 1fr;
+    gap:24px;
+    align-items:start;
+  }
+  @media (max-width:860px){
+    .grid{grid-template-columns:1fr;}
+  }
+
+  .panel{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:20px;
+  }
+  .panel h2{
+    font-size:15px;
+    font-weight:600;
+    margin:0 0 4px;
+  }
+  .panel .sub{
+    font-size:12.5px;
+    color:var(--text-dim);
+    margin:0 0 18px;
+  }
+
+  /* ---------- Form ---------- */
+  .field{margin-bottom:14px;}
+  .field label{
+    display:block;
+    font-size:12px;
+    color:var(--text-dim);
+    margin-bottom:6px;
+  }
+  .field input, .field select{
+    width:100%;
+    background:var(--surface-2);
+    border:1px solid var(--border);
+    border-radius:6px;
+    padding:9px 10px;
+    color:var(--text);
+    font-family:var(--font-head);
+    font-size:14px;
+  }
+  .field input[type="number"]{font-family:var(--font-mono);}
+  .field input:focus, .field select:focus{
+    outline:none;
+    border-color:var(--accent);
+  }
+  .row-2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+
+  .toggle-group{display:flex;gap:8px;}
+  .toggle-group button{
+    flex:1;
+    background:var(--surface-2);
+    border:1px solid var(--border);
+    color:var(--text-dim);
+    border-radius:6px;
+    padding:9px 0;
+    font-family:var(--font-head);
+    font-size:13px;
+    cursor:pointer;
+  }
+  .toggle-group button.active{
+    border-color:var(--accent);
+    color:var(--text);
+    background:rgba(91,141,239,0.12);
+  }
+
+  .preview{
+    margin-top:4px;
+    margin-bottom:16px;
+    padding:12px 14px;
+    background:var(--surface-2);
+    border:1px dashed var(--border);
+    border-radius:8px;
+    font-family:var(--font-mono);
+    font-size:13px;
+    color:var(--text-dim);
+    display:flex;
+    justify-content:space-between;
+  }
+  .preview .val{color:var(--text);font-weight:600;}
+  .preview .val.safe{color:var(--safe);}
+  .preview .val.warn{color:var(--warn);}
+
+  button.primary{
+    width:100%;
+    background:var(--accent);
+    color:#0d1117;
+    border:none;
+    border-radius:6px;
+    padding:11px 0;
+    font-family:var(--font-head);
+    font-weight:600;
+    font-size:14px;
+    cursor:pointer;
+  }
+  button.primary:hover{filter:brightness(1.08);}
+  button.ghost{
+    width:100%;
+    margin-top:8px;
+    background:transparent;
+    border:1px solid var(--border);
+    color:var(--text-dim);
+    border-radius:6px;
+    padding:9px 0;
+    font-family:var(--font-head);
+    font-size:13px;
+    cursor:pointer;
+  }
+
+  /* ---------- List panel ---------- */
+  .list-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:6px;
+    flex-wrap:wrap;
+    gap:10px;
+  }
+  .filters{display:flex;gap:6px;}
+  .filters button{
+    background:transparent;
+    border:1px solid var(--border);
+    color:var(--text-dim);
+    border-radius:20px;
+    padding:5px 12px;
+    font-size:12.5px;
+    font-family:var(--font-head);
+    cursor:pointer;
+  }
+  .filters button.active{
+    border-color:var(--text);
+    color:var(--text);
+  }
+
+  .list-col-labels{
+    display:grid;
+    grid-template-columns: 1.6fr 0.7fr 0.65fr 0.65fr 0.7fr 0.75fr 40px;
+    gap:10px;
+    padding:10px 14px;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:0.04em;
+    color:var(--text-faint);
+    border-bottom:1px solid var(--border);
+  }
+  @media (max-width:760px){ .list-col-labels{display:none;} }
+
+  .entry-row{
+    display:grid;
+    grid-template-columns: 1.6fr 0.7fr 0.65fr 0.65fr 0.7fr 0.75fr 40px;
+    gap:10px;
+    align-items:center;
+    padding:14px;
+    border-bottom:1px solid var(--border);
+    border-left:3px solid transparent;
+  }
+  .entry-row.is-safe{border-left-color:var(--safe);}
+  .entry-row.is-warn{border-left-color:var(--warn);}
+  .entry-row:last-child{border-bottom:none;}
+
+  .entry-team{min-width:0;}
+  .entry-team .name{font-weight:600;font-size:14px;}
+  .entry-team .meta{
+    font-size:11.5px;
+    color:var(--text-dim);
+    margin-top:2px;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .entry-num{font-family:var(--font-mono);font-size:14px;text-align:right;}
+  .entry-num .k{display:block;font-size:10.5px;color:var(--text-faint);font-weight:400;text-transform:uppercase;letter-spacing:.03em;}
+  .entry-status{text-align:right;}
+  .badge{
+    display:inline-block;
+    font-family:var(--font-mono);
+    font-size:12px;
+    font-weight:600;
+    padding:3px 8px;
+    border-radius:5px;
+  }
+  .badge.safe{background:var(--safe-bg);color:var(--safe);}
+  .badge.warn{background:var(--warn-bg);color:var(--warn);}
+
+  .entry-actions{display:flex;gap:6px;justify-content:flex-end;}
+  .icon-btn{
+    background:transparent;
+    border:none;
+    color:var(--text-faint);
+    cursor:pointer;
+    font-size:14px;
+    padding:2px 4px;
+  }
+  .icon-btn:hover{color:var(--text);}
+
+  @media (max-width:760px){
+    .entry-row{
+      grid-template-columns:1fr;
+      row-gap:8px;
+      position:relative;
+    }
+    .entry-num{
+      text-align:left;
+      display:flex;
+      justify-content:space-between;
+      font-size:13px;
+    }
+    .entry-num .k{display:inline;margin-right:8px;}
+    .entry-status{text-align:left;}
+    .entry-actions{position:absolute;top:14px;right:14px;}
+  }
+
+  .empty-state{
+    padding:48px 20px;
+    text-align:center;
+    color:var(--text-dim);
+    font-size:13.5px;
+  }
+
+  footer.note{
+    margin-top:20px;
+    font-size:12px;
+    color:var(--text-faint);
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="hero">
+    <div class="hero-title">
+      <h1>Valor na Linha</h1>
+      <p>Registro de entradas: compara a média da análise com a linha da casa e sinaliza quando a margem de segurança bate o mínimo de 1.70.</p>
+    </div>
+    <div class="hero-stats">
+      <div class="stat">
+        <span class="num" id="stat-total">0</span>
+        <span class="label">entradas</span>
+      </div>
+      <div class="stat">
+        <span class="num safe" id="stat-safe">0</span>
+        <span class="label">seguras</span>
+      </div>
+      <div class="stat">
+        <span class="num" id="stat-pct">—</span>
+        <span class="label">% acima do mínimo</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="grid">
+
+    <section class="panel">
+      <h2 id="form-title">Nova entrada</h2>
+      <p class="sub">Preencha os dados do jogo e da casa de aposta.</p>
+
+      <form id="entry-form">
+        <div class="field">
+          <label for="f-time">Time</label>
+          <input type="text" id="f-time" placeholder="Ex: Palmeiras" required>
+        </div>
+
+        <div class="field">
+          <label for="f-ult10">Resumo últimos 10 jogos</label>
+          <input type="text" id="f-ult10" placeholder="Ex: 7 over em 10 jogos" list="ult10-suggestions">
+          <datalist id="ult10-suggestions">
+            <option value="7 over em 10 jogos">
+            <option value="5V 3E 2D">
+          </datalist>
+        </div>
+
+        <div class="field">
+          <label>Mandante</label>
+          <div class="toggle-group" id="f-mandante-group">
+            <button type="button" data-val="Casa" class="active">Casa</button>
+            <button type="button" data-val="Fora">Fora</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="f-mercado">Mercado</label>
+          <input type="text" id="f-mercado" placeholder="Ex: Cartões, Escanteios, Gols" list="mercado-suggestions" required>
+          <datalist id="mercado-suggestions">
+            <option value="Cartões">
+            <option value="Escanteios">
+            <option value="Gols">
+            <option value="Chutes a gol">
+            <option value="Faltas">
+          </datalist>
+        </div>
+
+        <div class="row-2">
+          <div class="field">
+            <label for="f-media">Média (análise)</label>
+            <input type="number" id="f-media" step="0.01" placeholder="4.30" required>
+          </div>
+          <div class="field">
+            <label for="f-linha">Linha (casa)</label>
+            <input type="number" id="f-linha" step="0.25" placeholder="2.50" required>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="f-odd">Odd (casa)</label>
+          <input type="number" id="f-odd" step="0.01" placeholder="1.85" required>
+        </div>
+
+        <div class="preview" id="live-preview">
+          <span>margem prevista</span>
+          <span class="val" id="live-margem">—</span>
+        </div>
+
+        <button type="submit" class="primary" id="submit-btn">Adicionar entrada</button>
+        <button type="button" class="ghost" id="cancel-edit" style="display:none;">Cancelar edição</button>
+      </form>
+    </section>
+
+    <section class="panel">
+      <div class="list-header">
+        <h2>Entradas registradas</h2>
+        <div class="filters" id="filters">
+          <button data-filter="all" class="active">Todas</button>
+          <button data-filter="safe">Seguras</button>
+          <button data-filter="warn">Abaixo do mínimo</button>
+        </div>
+      </div>
+
+      <div class="list-col-labels">
+        <span>Time / mercado</span>
+        <span style="text-align:right;">Média</span>
+        <span style="text-align:right;">Linha</span>
+        <span style="text-align:right;">Odd</span>
+        <span style="text-align:right;">Margem</span>
+        <span style="text-align:right;">Status</span>
+        <span></span>
+      </div>
+
+      <div id="entries-container"></div>
+    </section>
+
+  </div>
+
+  <footer class="note">Margem = Média − Linha. Mínimo de segurança: 1.70. <span id="conn-status">Conectando ao banco de dados…</span></footer>
+</div>
+
+<script>
+  // ---------------------------------------------------------------
+  // CONFIGURAÇÃO DO FIREBASE — troque pelos dados do seu projeto
+  // (Console do Firebase → Configurações do projeto → Seus apps → SDK)
+  // ---------------------------------------------------------------
+  const firebaseConfig = {
+    apiKey: "AIzaSyAHQA4mHzdl0UeL3nb1Fc3Kub8XfONEnUs",
+    authDomain: "analises-esportivas-c5e7d.firebaseapp.com",
+    projectId: "analises-esportivas-c5e7d",
+    storageBucket: "analises-esportivas-c5e7d.firebasestorage.app",
+    messagingSenderId: "1000850099573",
+    appId: "1:1000850099573:web:b8b634fbbf6c927575973c"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+  const entriesRef = db.collection('entries');
+
+  const MIN_MARGEM = 1.70;
+
+  let entries = [];
+  let currentFilter = 'all';
+  let editingId = null;
+  let mandanteVal = 'Casa';
+
+  const form = document.getElementById('entry-form');
+  const container = document.getElementById('entries-container');
+  const mandanteGroup = document.getElementById('f-mandante-group');
+  const submitBtn = document.getElementById('submit-btn');
+  const cancelBtn = document.getElementById('cancel-edit');
+  const formTitle = document.getElementById('form-title');
+  const connStatus = document.getElementById('conn-status');
+
+  // Escuta o Firestore em tempo real — qualquer alteração (deste
+  // dispositivo ou de outro) atualiza a tela automaticamente.
+  entriesRef.orderBy('createdAt', 'desc').onSnapshot(
+    (snapshot) => {
+      entries = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      connStatus.textContent = 'Conectado.';
+      render();
+    },
+    (err) => {
+      console.error(err);
+      connStatus.textContent = 'Erro ao conectar ao banco de dados — confira firebaseConfig e as regras do Firestore.';
+    }
+  );
+
+  function calcMargem(media, linha){
+    return Math.round((media - linha) * 100) / 100;
+  }
+
+  function isSafe(margem){
+    return margem >= MIN_MARGEM;
+  }
+
+  mandanteGroup.addEventListener('click', (e) => {
+    const btn = e.target.closest('button');
+    if(!btn) return;
+    mandanteVal = btn.dataset.val;
+    [...mandanteGroup.children].forEach(b => b.classList.toggle('active', b === btn));
+  });
+
+  function updateLivePreview(){
+    const media = parseFloat(document.getElementById('f-media').value);
+    const linha = parseFloat(document.getElementById('f-linha').value);
+    const el = document.getElementById('live-margem');
+    if(isNaN(media) || isNaN(linha)){
+      el.textContent = '—';
+      el.className = 'val';
+      return;
+    }
+    const m = calcMargem(media, linha);
+    el.textContent = (m >= 0 ? '+' : '') + m.toFixed(2);
+    el.className = 'val ' + (isSafe(m) ? 'safe' : 'warn');
+  }
+  document.getElementById('f-media').addEventListener('input', updateLivePreview);
+  document.getElementById('f-linha').addEventListener('input', updateLivePreview);
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const data = {
+      time: document.getElementById('f-time').value.trim(),
+      ult10: document.getElementById('f-ult10').value.trim(),
+      mandante: mandanteVal,
+      mercado: document.getElementById('f-mercado').value.trim(),
+      media: parseFloat(document.getElementById('f-media').value),
+      linha: parseFloat(document.getElementById('f-linha').value),
+      odd: parseFloat(document.getElementById('f-odd').value),
+    };
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Salvando…';
+
+    try{
+      if(editingId){
+        await entriesRef.doc(editingId).update(data);
+        exitEditMode();
+      } else {
+        data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+        await entriesRef.add(data);
+      }
+      form.reset();
+      mandanteVal = 'Casa';
+      [...mandanteGroup.children].forEach(b => b.classList.toggle('active', b.dataset.val === 'Casa'));
+      updateLivePreview();
+    } catch(err){
+      console.error(err);
+      alert('Não foi possível salvar. Confira sua conexão e as regras do Firestore.');
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = editingId ? 'Salvar alterações' : 'Adicionar entrada';
+    }
+    // a lista é atualizada automaticamente pelo onSnapshot acima
+  });
+
+  function enterEditMode(id){
+    const entry = entries.find(x => x.id === id);
+    if(!entry) return;
+    editingId = id;
+    document.getElementById('f-time').value = entry.time;
+    document.getElementById('f-ult10').value = entry.ult10;
+    document.getElementById('f-mercado').value = entry.mercado;
+    document.getElementById('f-media').value = entry.media;
+    document.getElementById('f-linha').value = entry.linha;
+    document.getElementById('f-odd').value = entry.odd;
+    mandanteVal = entry.mandante;
+    [...mandanteGroup.children].forEach(b => b.classList.toggle('active', b.dataset.val === entry.mandante));
+    updateLivePreview();
+    formTitle.textContent = 'Editar entrada';
+    submitBtn.textContent = 'Salvar alterações';
+    cancelBtn.style.display = 'block';
+    window.scrollTo({top:0, behavior:'smooth'});
+  }
+
+  function exitEditMode(){
+    editingId = null;
+    formTitle.textContent = 'Nova entrada';
+    submitBtn.textContent = 'Adicionar entrada';
+    cancelBtn.style.display = 'none';
+  }
+
+  cancelBtn.addEventListener('click', () => {
+    exitEditMode();
+    form.reset();
+    updateLivePreview();
+  });
+
+  document.getElementById('filters').addEventListener('click', (e) => {
+    const btn = e.target.closest('button');
+    if(!btn) return;
+    currentFilter = btn.dataset.filter;
+    [...e.currentTarget.children].forEach(b => b.classList.toggle('active', b === btn));
+    render();
+  });
+
+  async function deleteEntry(id){
+    if(!confirm('Excluir esta entrada?')) return;
+    try{
+      await entriesRef.doc(id).delete();
+      if(editingId === id){ exitEditMode(); form.reset(); updateLivePreview(); }
+    } catch(err){
+      console.error(err);
+      alert('Não foi possível excluir. Confira sua conexão.');
+    }
+    // a lista é atualizada automaticamente pelo onSnapshot acima
+  }
+
+  function render(){
+    const total = entries.length;
+    const withMargem = entries.map(en => ({...en, margem: calcMargem(en.media, en.linha)}));
+    const safeCount = withMargem.filter(en => isSafe(en.margem)).length;
+
+    document.getElementById('stat-total').textContent = total;
+    document.getElementById('stat-safe').textContent = safeCount;
+    document.getElementById('stat-pct').textContent = total ? Math.round((safeCount/total)*100) + '%' : '—';
+
+    let list = withMargem.sort((a,b) => b.margem - a.margem);
+    if(currentFilter === 'safe') list = list.filter(en => isSafe(en.margem));
+    if(currentFilter === 'warn') list = list.filter(en => !isSafe(en.margem));
+
+    if(list.length === 0){
+      container.innerHTML = `<div class="empty-state">${total === 0 ? 'Nenhuma entrada registrada ainda. Preencha o formulário ao lado.' : 'Nenhuma entrada nesse filtro.'}</div>`;
+      return;
+    }
+
+    container.innerHTML = list.map(en => {
+      const safe = isSafe(en.margem);
+      return `
+        <div class="entry-row ${safe ? 'is-safe' : 'is-warn'}">
+          <div class="entry-team">
+            <div class="name">${escapeHtml(en.time)}</div>
+            <div class="meta">${escapeHtml(en.mercado)} · ${en.mandante}${en.ult10 ? ' · ' + escapeHtml(en.ult10) : ''}</div>
+          </div>
+          <div class="entry-num"><span class="k">Média</span>${en.media.toFixed(2)}</div>
+          <div class="entry-num"><span class="k">Linha</span>${en.linha.toFixed(2)}</div>
+          <div class="entry-num"><span class="k">Odd</span>${en.odd.toFixed(2)}</div>
+          <div class="entry-num"><span class="k">Margem</span>${(en.margem >= 0 ? '+' : '') + en.margem.toFixed(2)}</div>
+          <div class="entry-status"><span class="badge ${safe ? 'safe' : 'warn'}">${safe ? 'Segura' : 'Abaixo'}</span></div>
+          <div class="entry-actions">
+            <button class="icon-btn" title="Editar" onclick="enterEditMode('${en.id}')">✎</button>
+            <button class="icon-btn" title="Excluir" onclick="deleteEntry('${en.id}')">✕</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function escapeHtml(str){
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+  }
+
+  render();
+</script>
+</body>
+</html>
