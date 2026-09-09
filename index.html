@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Valor na Linha — controle de entradas</title>
+<title>Valor Ev+ — controle de entradas</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -226,7 +226,7 @@
 
   .list-col-labels{
     display:grid;
-    grid-template-columns: 1.6fr 0.7fr 0.65fr 0.65fr 0.7fr 0.75fr 40px;
+    grid-template-columns: 1.4fr 0.55fr 0.55fr 0.55fr 0.6fr 0.55fr 0.85fr 40px;
     gap:10px;
     padding:10px 14px;
     font-size:11px;
@@ -239,7 +239,7 @@
 
   .entry-row{
     display:grid;
-    grid-template-columns: 1.6fr 0.7fr 0.65fr 0.65fr 0.7fr 0.75fr 40px;
+    grid-template-columns: 1.4fr 0.55fr 0.55fr 0.55fr 0.6fr 0.55fr 0.85fr 40px;
     gap:10px;
     align-items:center;
     padding:14px;
@@ -309,6 +309,102 @@
     font-size:13.5px;
   }
 
+  /* ---------- Tabs ---------- */
+  .tabs{
+    display:flex;
+    gap:6px;
+    margin-bottom:20px;
+  }
+  .tab-btn{
+    background:transparent;
+    border:1px solid var(--border);
+    color:var(--text-dim);
+    border-radius:8px;
+    padding:8px 16px;
+    font-family:var(--font-head);
+    font-size:13.5px;
+    font-weight:500;
+    cursor:pointer;
+  }
+  .tab-btn.active{
+    border-color:var(--accent);
+    color:var(--text);
+    background:rgba(91,141,239,0.12);
+  }
+
+  /* ---------- Result buttons (Green/Red) ---------- */
+  .result-buttons{display:flex;gap:5px;justify-content:flex-end;}
+  .result-btn{
+    font-family:var(--font-head);
+    font-size:11px;
+    font-weight:600;
+    border-radius:5px;
+    padding:4px 8px;
+    cursor:pointer;
+    background:transparent;
+  }
+  .result-btn.green{border:1px solid var(--safe);color:var(--safe);}
+  .result-btn.green:hover{background:var(--safe-bg);}
+  .result-btn.red{border:1px solid var(--warn);color:var(--warn);}
+  .result-btn.red:hover{background:var(--warn-bg);}
+  .badge.clickable{cursor:pointer;}
+
+  @media (max-width:760px){
+    .result-buttons{justify-content:flex-start;}
+  }
+
+  /* ---------- Lucros ---------- */
+  .profit-summary{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(120px, 1fr));
+    gap:12px;
+    margin-bottom:22px;
+  }
+  .profit-card{
+    background:var(--surface-2);
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:12px 14px;
+  }
+  .profit-card .num{
+    display:block;
+    font-family:var(--font-mono);
+    font-size:20px;
+    font-weight:600;
+  }
+  .profit-card .num.safe{color:var(--safe);}
+  .profit-card .num.warn{color:var(--warn);}
+  .profit-card .label{
+    display:block;
+    font-size:11.5px;
+    color:var(--text-dim);
+    margin-top:4px;
+  }
+
+  .profit-col-labels{grid-template-columns: 1.6fr 0.7fr 0.6fr 0.75fr 0.7fr 0.8fr;}
+  .profit-row{
+    display:grid;
+    grid-template-columns: 1.6fr 0.7fr 0.6fr 0.75fr 0.7fr 0.8fr;
+    gap:10px;
+    align-items:center;
+    padding:14px;
+    border-bottom:1px solid var(--border);
+  }
+  .profit-row:last-child{border-bottom:none;}
+  @media (max-width:760px){
+    .profit-row{
+      grid-template-columns:1fr;
+      row-gap:6px;
+    }
+    .profit-row .entry-num{
+      text-align:left;
+      display:flex;
+      justify-content:space-between;
+      font-size:13px;
+    }
+    .profit-row .entry-num .k{display:inline;margin-right:8px;}
+  }
+
   footer.note{
     margin-top:20px;
     font-size:12px;
@@ -321,7 +417,7 @@
 
   <header class="hero">
     <div class="hero-title">
-      <h1>Valor na Linha</h1>
+      <h1>Valor Ev+</h1>
       <p>Registro de entradas: compara a média da análise com a linha da casa e sinaliza quando a margem de segurança bate o mínimo de 1.70.</p>
     </div>
     <div class="hero-stats">
@@ -340,7 +436,12 @@
     </div>
   </header>
 
-  <div class="grid">
+  <nav class="tabs" id="tabs">
+    <button class="tab-btn active" data-view="entradas">Entradas</button>
+    <button class="tab-btn" data-view="lucros">Lucros</button>
+  </nav>
+
+  <div class="grid" id="view-entradas">
 
     <section class="panel">
       <h2 id="form-title">Nova entrada</h2>
@@ -350,15 +451,6 @@
         <div class="field">
           <label for="f-time">Time</label>
           <input type="text" id="f-time" placeholder="Ex: Palmeiras" required>
-        </div>
-
-        <div class="field">
-          <label for="f-ult10">Resumo últimos 10 jogos</label>
-          <input type="text" id="f-ult10" placeholder="Ex: 7 over em 10 jogos" list="ult10-suggestions">
-          <datalist id="ult10-suggestions">
-            <option value="7 over em 10 jogos">
-            <option value="5V 3E 2D">
-          </datalist>
         </div>
 
         <div class="field">
@@ -392,9 +484,15 @@
           </div>
         </div>
 
-        <div class="field">
-          <label for="f-odd">Odd (casa)</label>
-          <input type="number" id="f-odd" step="0.01" placeholder="1.85" required>
+        <div class="row-2">
+          <div class="field">
+            <label for="f-odd">Odd (casa)</label>
+            <input type="number" id="f-odd" step="0.01" placeholder="1.85" required>
+          </div>
+          <div class="field">
+            <label for="f-unidades">Unidades apostadas</label>
+            <input type="number" id="f-unidades" step="0.1" min="0" placeholder="1" required>
+          </div>
         </div>
 
         <div class="preview" id="live-preview">
@@ -423,7 +521,8 @@
         <span style="text-align:right;">Linha</span>
         <span style="text-align:right;">Odd</span>
         <span style="text-align:right;">Margem</span>
-        <span style="text-align:right;">Status</span>
+        <span style="text-align:right;">Unid.</span>
+        <span style="text-align:right;">Resultado</span>
         <span></span>
       </div>
 
@@ -431,6 +530,24 @@
     </section>
 
   </div>
+
+  <section class="panel" id="view-lucros" style="display:none;">
+    <h2>Lucros em unidades</h2>
+    <p class="sub">Marque cada entrada como Green ou Red na aba Entradas para ela entrar nesse balanço.</p>
+
+    <div class="profit-summary" id="profit-summary"></div>
+
+    <div class="list-col-labels profit-col-labels">
+      <span>Time / mercado</span>
+      <span style="text-align:right;">Unidades</span>
+      <span style="text-align:right;">Odd</span>
+      <span style="text-align:right;">Resultado</span>
+      <span style="text-align:right;">Lucro</span>
+      <span style="text-align:right;">Saldo acum.</span>
+    </div>
+
+    <div id="profit-container"></div>
+  </section>
 
   <footer class="note">Margem = Média − Linha. Mínimo de segurança: 1.70. <span id="conn-status">Conectando ao banco de dados…</span></footer>
 </div>
@@ -517,12 +634,12 @@
     e.preventDefault();
     const data = {
       time: document.getElementById('f-time').value.trim(),
-      ult10: document.getElementById('f-ult10').value.trim(),
       mandante: mandanteVal,
       mercado: document.getElementById('f-mercado').value.trim(),
       media: parseFloat(document.getElementById('f-media').value),
       linha: parseFloat(document.getElementById('f-linha').value),
       odd: parseFloat(document.getElementById('f-odd').value),
+      unidades: parseFloat(document.getElementById('f-unidades').value),
     };
 
     submitBtn.disabled = true;
@@ -534,6 +651,7 @@
         exitEditMode();
       } else {
         data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+        data.resultado = 'pendente';
         await entriesRef.add(data);
       }
       form.reset();
@@ -555,11 +673,11 @@
     if(!entry) return;
     editingId = id;
     document.getElementById('f-time').value = entry.time;
-    document.getElementById('f-ult10').value = entry.ult10;
     document.getElementById('f-mercado').value = entry.mercado;
     document.getElementById('f-media').value = entry.media;
     document.getElementById('f-linha').value = entry.linha;
     document.getElementById('f-odd').value = entry.odd;
+    document.getElementById('f-unidades').value = entry.unidades != null ? entry.unidades : 1;
     mandanteVal = entry.mandante;
     [...mandanteGroup.children].forEach(b => b.classList.toggle('active', b.dataset.val === entry.mandante));
     updateLivePreview();
@@ -602,6 +720,23 @@
     // a lista é atualizada automaticamente pelo onSnapshot acima
   }
 
+  async function markResult(id, resultado){
+    try{
+      await entriesRef.doc(id).update({ resultado });
+    } catch(err){
+      console.error(err);
+      alert('Não foi possível salvar o resultado. Confira sua conexão.');
+    }
+    // a lista é atualizada automaticamente pelo onSnapshot acima
+  }
+
+  function calcLucro(en){
+    const unidades = en.unidades != null ? en.unidades : 1;
+    if(en.resultado === 'green') return Math.round(unidades * (en.odd - 1) * 100) / 100;
+    if(en.resultado === 'red') return -unidades;
+    return null;
+  }
+
   function render(){
     const total = entries.length;
     const withMargem = entries.map(en => ({...en, margem: calcMargem(en.media, en.linha)}));
@@ -622,17 +757,30 @@
 
     container.innerHTML = list.map(en => {
       const safe = isSafe(en.margem);
+      const unidades = en.unidades != null ? en.unidades : 1;
+      const resultado = en.resultado || 'pendente';
+      let resultadoHtml;
+      if(resultado === 'pendente'){
+        resultadoHtml = `
+          <div class="result-buttons">
+            <button class="result-btn green" onclick="markResult('${en.id}','green')">Green</button>
+            <button class="result-btn red" onclick="markResult('${en.id}','red')">Red</button>
+          </div>`;
+      } else {
+        resultadoHtml = `<span class="badge ${resultado === 'green' ? 'safe' : 'warn'} clickable" title="Clique para voltar a pendente" onclick="markResult('${en.id}','pendente')">${resultado === 'green' ? 'Green' : 'Red'}</span>`;
+      }
       return `
         <div class="entry-row ${safe ? 'is-safe' : 'is-warn'}">
           <div class="entry-team">
             <div class="name">${escapeHtml(en.time)}</div>
-            <div class="meta">${escapeHtml(en.mercado)} · ${en.mandante}${en.ult10 ? ' · ' + escapeHtml(en.ult10) : ''}</div>
+            <div class="meta">${escapeHtml(en.mercado)} · ${en.mandante}</div>
           </div>
           <div class="entry-num"><span class="k">Média</span>${en.media.toFixed(2)}</div>
           <div class="entry-num"><span class="k">Linha</span>${en.linha.toFixed(2)}</div>
           <div class="entry-num"><span class="k">Odd</span>${en.odd.toFixed(2)}</div>
           <div class="entry-num"><span class="k">Margem</span>${(en.margem >= 0 ? '+' : '') + en.margem.toFixed(2)}</div>
-          <div class="entry-status"><span class="badge ${safe ? 'safe' : 'warn'}">${safe ? 'Segura' : 'Abaixo'}</span></div>
+          <div class="entry-num"><span class="k">Unid.</span>${unidades.toFixed(2)}</div>
+          <div class="entry-status">${resultadoHtml}</div>
           <div class="entry-actions">
             <button class="icon-btn" title="Editar" onclick="enterEditMode('${en.id}')">✎</button>
             <button class="icon-btn" title="Excluir" onclick="deleteEntry('${en.id}')">✕</button>
@@ -646,6 +794,74 @@
     const d = document.createElement('div');
     d.textContent = str;
     return d.innerHTML;
+  }
+
+  document.getElementById('tabs').addEventListener('click', (e) => {
+    const btn = e.target.closest('button');
+    if(!btn) return;
+    const view = btn.dataset.view;
+    [...document.getElementById('tabs').children].forEach(b => b.classList.toggle('active', b === btn));
+    document.getElementById('view-entradas').style.display = view === 'entradas' ? 'grid' : 'none';
+    document.getElementById('view-lucros').style.display = view === 'lucros' ? 'block' : 'none';
+    if(view === 'lucros') renderLucros();
+  });
+
+  function renderLucros(){
+    const settled = entries.filter(en => en.resultado === 'green' || en.resultado === 'red');
+    const totalStaked = settled.reduce((sum, en) => sum + (en.unidades != null ? en.unidades : 1), 0);
+    const totalProfit = settled.reduce((sum, en) => sum + calcLucro(en), 0);
+    const greenCount = settled.filter(en => en.resultado === 'green').length;
+    const redCount = settled.filter(en => en.resultado === 'red').length;
+    const pendingCount = entries.length - settled.length;
+    const winRate = settled.length ? Math.round((greenCount / settled.length) * 100) : 0;
+    const roi = totalStaked ? Math.round((totalProfit / totalStaked) * 1000) / 10 : 0;
+
+    const summary = document.getElementById('profit-summary');
+    summary.innerHTML = `
+      <div class="profit-card"><span class="num ${totalProfit >= 0 ? 'safe' : 'warn'}">${(totalProfit >= 0 ? '+' : '') + totalProfit.toFixed(2)}</span><span class="label">lucro (unidades)</span></div>
+      <div class="profit-card"><span class="num">${totalStaked.toFixed(2)}</span><span class="label">total apostado</span></div>
+      <div class="profit-card"><span class="num ${roi >= 0 ? 'safe' : 'warn'}">${(roi >= 0 ? '+' : '') + roi}%</span><span class="label">ROI</span></div>
+      <div class="profit-card"><span class="num">${winRate}%</span><span class="label">taxa de acerto</span></div>
+      <div class="profit-card"><span class="num safe">${greenCount}</span><span class="label">green</span></div>
+      <div class="profit-card"><span class="num warn">${redCount}</span><span class="label">red</span></div>
+      <div class="profit-card"><span class="num">${pendingCount}</span><span class="label">pendentes</span></div>
+    `;
+
+    const profitContainer = document.getElementById('profit-container');
+    if(settled.length === 0){
+      profitContainer.innerHTML = `<div class="empty-state">Nenhuma entrada com resultado marcado ainda. Vá em Entradas e marque Green ou Red.</div>`;
+      return;
+    }
+
+    // ordem cronológica (mais antiga primeiro) para o saldo acumulado fazer sentido
+    const chronological = [...settled].sort((a,b) => {
+      const ta = a.createdAt && a.createdAt.toMillis ? a.createdAt.toMillis() : 0;
+      const tb = b.createdAt && b.createdAt.toMillis ? b.createdAt.toMillis() : 0;
+      return ta - tb;
+    });
+
+    let running = 0;
+    const rows = chronological.map(en => {
+      const lucro = calcLucro(en);
+      running += lucro;
+      const unidades = en.unidades != null ? en.unidades : 1;
+      return `
+        <div class="profit-row">
+          <div class="entry-team">
+            <div class="name">${escapeHtml(en.time)}</div>
+            <div class="meta">${escapeHtml(en.mercado)} · ${en.mandante}</div>
+          </div>
+          <div class="entry-num"><span class="k">Unid.</span>${unidades.toFixed(2)}</div>
+          <div class="entry-num"><span class="k">Odd</span>${en.odd.toFixed(2)}</div>
+          <div class="entry-status"><span class="badge ${en.resultado === 'green' ? 'safe' : 'warn'}">${en.resultado === 'green' ? 'Green' : 'Red'}</span></div>
+          <div class="entry-num"><span class="k">Lucro</span><span style="color:${lucro >= 0 ? 'var(--safe)' : 'var(--warn)'}">${(lucro >= 0 ? '+' : '') + lucro.toFixed(2)}</span></div>
+          <div class="entry-num"><span class="k">Saldo</span>${(running >= 0 ? '+' : '') + running.toFixed(2)}</div>
+        </div>
+      `;
+    });
+
+    // mostra do mais recente pro mais antigo, mantendo o saldo já calculado em ordem cronológica
+    profitContainer.innerHTML = rows.reverse().join('');
   }
 
   render();
