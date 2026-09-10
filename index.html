@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Método 1.7 — controle de entradas</title>
+<title>IA Analytics — controle de entradas</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -134,23 +134,6 @@
     background:rgba(91,141,239,0.12);
   }
 
-  .preview{
-    margin-top:4px;
-    margin-bottom:16px;
-    padding:12px 14px;
-    background:var(--surface-2);
-    border:1px dashed var(--border);
-    border-radius:8px;
-    font-family:var(--font-mono);
-    font-size:13px;
-    color:var(--text-dim);
-    display:flex;
-    justify-content:space-between;
-  }
-  .preview .val{color:var(--text);font-weight:600;}
-  .preview .val.safe{color:var(--safe);}
-  .preview .val.warn{color:var(--warn);}
-
   button.primary{
     width:100%;
     background:var(--accent);
@@ -202,24 +185,9 @@
   }
   .list-stats strong.safe{color:var(--safe);}
   .list-stats strong.warn{color:var(--warn);}
-  .filters{display:flex;gap:6px;justify-self:end;}
-  .filters button{
-    background:transparent;
-    border:1px solid var(--border);
-    color:var(--text-dim);
-    border-radius:20px;
-    padding:5px 12px;
-    font-size:12.5px;
-    font-family:var(--font-head);
-    cursor:pointer;
-  }
-  .filters button.active{
-    border-color:var(--text);
-    color:var(--text);
-  }
   @media (max-width:700px){
     .list-header{grid-template-columns:1fr;}
-    .list-header h2, .list-stats, .filters{justify-self:start;}
+    .list-header h2, .list-stats{justify-self:start;}
   }
 
   .list-col-labels{
@@ -235,30 +203,7 @@
   }
   @media (max-width:760px){ .list-col-labels{display:none;} }
 
-  .entry-row{
-    display:grid;
-    grid-template-columns: 1.4fr 0.6fr 0.6fr 0.6fr 0.7fr 0.9fr 40px;
-    gap:10px;
-    align-items:center;
-    padding:14px;
-    border-bottom:1px solid var(--border);
-    border-left:3px solid transparent;
-  }
-  .entry-row.is-pending{border-left-color:var(--text-faint);}
-  .entry-row.is-green{border-left-color:var(--safe);}
-  .entry-row.is-red{border-left-color:var(--warn);}
-  .entry-row:last-child{border-bottom:none;}
-
-  .entry-team{min-width:0;}
-  .entry-team .name{font-weight:600;font-size:14px;}
-  .entry-team .meta{
-    font-size:11.5px;
-    color:var(--text-dim);
-    margin-top:2px;
-    line-height:1.4;
-  }
   .entry-num{font-family:var(--font-mono);font-size:14px;text-align:right;}
-  .entry-num.margem-ev{color:var(--safe);font-weight:600;}
   .entry-num .k{display:none;}
   .entry-status{text-align:right;}
   .badge{
@@ -284,11 +229,6 @@
   .icon-btn:hover{color:var(--text);}
 
   @media (max-width:760px){
-    .entry-row{
-      grid-template-columns:1fr;
-      row-gap:8px;
-      position:relative;
-    }
     .entry-num{
       text-align:left;
       display:flex;
@@ -328,27 +268,6 @@
     border-color:var(--accent);
     color:var(--text);
     background:rgba(91,141,239,0.12);
-  }
-
-  /* ---------- Result buttons (Green/Red) ---------- */
-  .result-buttons{display:flex;gap:5px;justify-content:flex-end;}
-  .result-btn{
-    font-family:var(--font-head);
-    font-size:11px;
-    font-weight:600;
-    border-radius:5px;
-    padding:4px 8px;
-    cursor:pointer;
-    background:transparent;
-  }
-  .result-btn.green{border:1px solid var(--safe);color:var(--safe);}
-  .result-btn.green:hover{background:var(--safe-bg);}
-  .result-btn.red{border:1px solid var(--warn);color:var(--warn);}
-  .result-btn.red:hover{background:var(--warn-bg);}
-  .badge.clickable{cursor:pointer;}
-
-  @media (max-width:760px){
-    .result-buttons{justify-content:flex-start;}
   }
 
   /* ---------- Lucros ---------- */
@@ -495,114 +414,36 @@
 
   <header class="hero">
     <div class="hero-title">
-      <h1>Método 1.7</h1>
-      <p>Registro de entradas: compara a média da análise com a linha da casa e sinaliza quando a margem de segurança alcança o EV+.</p>
+      <h1>IA Analytics</h1>
     </div>
   </header>
 
   <nav class="tabs" id="tabs">
-    <button class="tab-btn active" data-view="entradas">Entradas</button>
+    <button class="tab-btn active" data-view="analises">Análises</button>
     <button class="tab-btn" data-view="calculadora">Calculadora do dia</button>
     <button class="tab-btn" data-view="ganhos">Banca - Ganhos/Perdas</button>
-    <button class="tab-btn" data-view="analises">Análises</button>
   </nav>
 
-  <div id="view-entradas">
-    <div class="profit-summary" id="profit-summary"></div>
-
-    <div class="grid">
-
+  <div id="view-analises">
     <section class="panel">
-      <h2 id="form-title">Nova entrada</h2>
-      <p class="sub">Preencha os dados do jogo e da casa de aposta.</p>
+      <h2>Análises com o Claude</h2>
+      <p class="sub">Sem backend, sem chave de API — é só levar o print pra uma conversa com o Claude.</p>
 
-      <form id="entry-form">
-        <div class="row-2">
-          <div class="field">
-            <label for="f-time">Time</label>
-            <input type="text" id="f-time" placeholder="Ex: Palmeiras" required>
-          </div>
-          <div class="field">
-            <label for="f-data">Data</label>
-            <input type="date" id="f-data" required>
-          </div>
-        </div>
+      <ol class="an-steps">
+        <li>Tire um print das médias no Tip Score (ou outro site de análise).</li>
+        <li>Clique em "Copiar prompt" abaixo.</li>
+        <li>Clique em "Abrir conversa com o Claude" — abre uma aba nova.</li>
+        <li>Cole o prompt, anexe o print e envie.</li>
+      </ol>
 
-        <div class="field">
-          <label>Mandante</label>
-          <div class="toggle-group" id="f-mandante-group">
-            <button type="button" data-val="Casa" class="active">Casa</button>
-            <button type="button" data-val="Fora">Fora</button>
-          </div>
-        </div>
+      <div class="an-prompt-box" id="an-prompt-box"></div>
 
-        <div class="field">
-          <label for="f-mercado">Mercado</label>
-          <input type="text" id="f-mercado" placeholder="Ex: Cartões, Escanteios, Gols" list="mercado-suggestions" required>
-          <datalist id="mercado-suggestions">
-            <option value="Cartões">
-            <option value="Escanteios">
-            <option value="Gols">
-            <option value="Chutes a gol">
-            <option value="Faltas">
-          </datalist>
-        </div>
-
-        <div class="field">
-          <label for="f-qtdjogos">Últ. Jogos</label>
-          <input type="number" id="f-qtdjogos" step="1" min="0" placeholder="Ex: 10">
-        </div>
-
-        <div class="row-2">
-          <div class="field">
-            <label for="f-media">Média (Tip Score)</label>
-            <input type="number" id="f-media" step="0.01" placeholder="4.30" required>
-          </div>
-          <div class="field">
-            <label for="f-linha">Linha (Bet's)</label>
-            <input type="number" id="f-linha" step="0.25" placeholder="2.50" required>
-          </div>
-        </div>
-
-        <div class="field">
-          <label for="f-odd">Odd (casa)</label>
-          <input type="number" id="f-odd" step="0.01" min="1.50" placeholder="1.85" required>
-        </div>
-
-        <div class="preview" id="live-preview">
-          <span>margem prevista</span>
-          <span class="val" id="live-margem">—</span>
-        </div>
-
-        <button type="submit" class="primary" id="submit-btn">Adicionar entrada</button>
-        <button type="button" class="ghost" id="cancel-edit" style="display:none;">Cancelar edição</button>
-      </form>
-    </section>
-
-    <section class="panel">
-      <div class="list-header" style="grid-template-columns:1fr auto;">
-        <h2>Entradas registradas</h2>
-        <div class="filters" id="filters">
-          <button data-filter="all" class="active">Todas</button>
-          <button data-filter="safe">Seguras</button>
-          <button data-filter="warn">Abaixo do mínimo</button>
-        </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;">
+        <button type="button" class="ghost" id="an-copy" style="width:auto;padding:10px 18px;">Copiar prompt</button>
+        <button type="button" class="primary" id="an-open" style="width:auto;padding:10px 18px;">Abrir conversa com o Claude</button>
       </div>
-
-      <div class="list-col-labels">
-        <span>Time / mercado</span>
-        <span style="text-align:right;">Média (Tip Score)</span>
-        <span style="text-align:right;">Linha (Bet's)</span>
-        <span style="text-align:right;">Odd</span>
-        <span style="text-align:right;">Margem EV+</span>
-        <span style="text-align:right;">Resultado</span>
-        <span></span>
-      </div>
-
-      <div id="entries-container"></div>
+      <span id="an-copy-status" style="font-size:12.5px;color:var(--safe);margin-top:8px;display:block;"></span>
     </section>
-
-    </div>
   </div>
 
   <div class="grid" id="view-calculadora" style="display:none;">
@@ -670,30 +511,8 @@
     <div id="ganhos-container"></div>
   </section>
 
-  <div id="view-analises" style="display:none;">
-    <section class="panel">
-      <h2>Análises com o Claude</h2>
-      <p class="sub">Sem backend, sem chave de API — é só levar o print pra uma conversa com o Claude.</p>
-
-      <ol class="an-steps">
-        <li>Tire um print das médias no Tip Score (ou outro site de análise).</li>
-        <li>Clique em "Copiar prompt" abaixo.</li>
-        <li>Clique em "Abrir conversa com o Claude" — abre uma aba nova.</li>
-        <li>Cole o prompt, anexe o print e envie.</li>
-      </ol>
-
-      <div class="an-prompt-box" id="an-prompt-box"></div>
-
-      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;">
-        <button type="button" class="ghost" id="an-copy" style="width:auto;padding:10px 18px;">Copiar prompt</button>
-        <button type="button" class="primary" id="an-open" style="width:auto;padding:10px 18px;">Abrir conversa com o Claude</button>
-      </div>
-      <span id="an-copy-status" style="font-size:12.5px;color:var(--safe);margin-top:8px;display:block;"></span>
-    </section>
-  </div>
-
-  <footer class="note" id="conn-footer" style="display:none;"><span id="conn-status"></span></footer>
 </div>
+
 
 <script>
   // ---------------------------------------------------------------
@@ -711,39 +530,7 @@
 
   firebase.initializeApp(firebaseConfig);
   const db = firebase.firestore();
-  const entriesRef = db.collection('entries');
   const movimentosRef = db.collection('movimentos');
-
-  const MIN_MARGEM = 1.70;
-
-  let entries = [];
-  let currentFilter = 'all';
-  let editingId = null;
-  let mandanteVal = 'Casa';
-
-  const form = document.getElementById('entry-form');
-  const container = document.getElementById('entries-container');
-  const mandanteGroup = document.getElementById('f-mandante-group');
-  const submitBtn = document.getElementById('submit-btn');
-  const cancelBtn = document.getElementById('cancel-edit');
-  const formTitle = document.getElementById('form-title');
-  const connStatus = document.getElementById('conn-status');
-  const connFooter = document.getElementById('conn-footer');
-
-  // Escuta o Firestore em tempo real — qualquer alteração (deste
-  // dispositivo ou de outro) atualiza a tela automaticamente.
-  entriesRef.orderBy('createdAt', 'desc').onSnapshot(
-    (snapshot) => {
-      entries = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      connFooter.style.display = 'none';
-      render();
-    },
-    (err) => {
-      console.error(err);
-      connStatus.textContent = 'Erro ao conectar ao banco de dados — confira firebaseConfig e as regras do Firestore.';
-      connFooter.style.display = 'block';
-    }
-  );
 
   // Cada aposta enviada pela Calculadora vira um documento aqui —
   // isso permite listar e apagar movimentações específicas por dia.
@@ -755,207 +542,6 @@
     },
     (err) => console.error(err)
   );
-
-  function calcMargem(media, linha){
-    return Math.round((media - linha) * 100) / 100;
-  }
-
-  function setDefaultDate(){
-    const today = new Date().toISOString().slice(0, 10);
-    document.getElementById('f-data').value = today;
-  }
-  setDefaultDate();
-
-  function isSafe(margem){
-    return margem >= MIN_MARGEM;
-  }
-
-  mandanteGroup.addEventListener('click', (e) => {
-    const btn = e.target.closest('button');
-    if(!btn) return;
-    mandanteVal = btn.dataset.val;
-    [...mandanteGroup.children].forEach(b => b.classList.toggle('active', b === btn));
-  });
-
-  function updateLivePreview(){
-    const media = parseFloat(document.getElementById('f-media').value);
-    const linha = parseFloat(document.getElementById('f-linha').value);
-    const el = document.getElementById('live-margem');
-    if(isNaN(media) || isNaN(linha)){
-      el.textContent = '—';
-      el.className = 'val';
-      return;
-    }
-    const m = calcMargem(media, linha);
-    el.textContent = (m >= 0 ? '+' : '') + m.toFixed(2);
-    el.className = 'val ' + (isSafe(m) ? 'safe' : 'warn');
-  }
-  document.getElementById('f-media').addEventListener('input', updateLivePreview);
-  document.getElementById('f-linha').addEventListener('input', updateLivePreview);
-
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const data = {
-      time: document.getElementById('f-time').value.trim(),
-      data: document.getElementById('f-data').value,
-      mandante: mandanteVal,
-      mercado: document.getElementById('f-mercado').value.trim(),
-      qtdJogos: document.getElementById('f-qtdjogos').value ? parseInt(document.getElementById('f-qtdjogos').value, 10) : null,
-      media: parseFloat(document.getElementById('f-media').value),
-      linha: parseFloat(document.getElementById('f-linha').value),
-      odd: parseFloat(document.getElementById('f-odd').value),
-    };
-
-    if(data.odd < 1.50){
-      alert('A odd da casa precisa ser no mínimo 1.50.');
-      return;
-    }
-
-    submitBtn.disabled = true;
-    submitBtn.textContent = 'Salvando…';
-
-    try{
-      if(editingId){
-        await entriesRef.doc(editingId).update(data);
-        exitEditMode();
-      } else {
-        data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-        data.resultado = 'pendente';
-        await entriesRef.add(data);
-      }
-      form.reset();
-      mandanteVal = 'Casa';
-      [...mandanteGroup.children].forEach(b => b.classList.toggle('active', b.dataset.val === 'Casa'));
-      setDefaultDate();
-      updateLivePreview();
-    } catch(err){
-      console.error(err);
-      alert('Não foi possível salvar. Confira sua conexão e as regras do Firestore.');
-    } finally {
-      submitBtn.disabled = false;
-      submitBtn.textContent = editingId ? 'Salvar alterações' : 'Adicionar entrada';
-    }
-    // a lista é atualizada automaticamente pelo onSnapshot acima
-  });
-
-  function enterEditMode(id){
-    const entry = entries.find(x => x.id === id);
-    if(!entry) return;
-    editingId = id;
-    document.getElementById('f-time').value = entry.time;
-    document.getElementById('f-data').value = entry.data || '';
-    document.getElementById('f-mercado').value = entry.mercado;
-    document.getElementById('f-qtdjogos').value = entry.qtdJogos != null ? entry.qtdJogos : '';
-    document.getElementById('f-media').value = entry.media;
-    document.getElementById('f-linha').value = entry.linha;
-    document.getElementById('f-odd').value = entry.odd;
-    mandanteVal = entry.mandante;
-    [...mandanteGroup.children].forEach(b => b.classList.toggle('active', b.dataset.val === entry.mandante));
-    updateLivePreview();
-    formTitle.textContent = 'Editar entrada';
-    submitBtn.textContent = 'Salvar alterações';
-    cancelBtn.style.display = 'block';
-    window.scrollTo({top:0, behavior:'smooth'});
-  }
-
-  function exitEditMode(){
-    editingId = null;
-    formTitle.textContent = 'Nova entrada';
-    submitBtn.textContent = 'Adicionar entrada';
-    cancelBtn.style.display = 'none';
-  }
-
-  cancelBtn.addEventListener('click', () => {
-    exitEditMode();
-    form.reset();
-    setDefaultDate();
-    updateLivePreview();
-  });
-
-  document.getElementById('filters').addEventListener('click', (e) => {
-    const btn = e.target.closest('button');
-    if(!btn) return;
-    currentFilter = btn.dataset.filter;
-    [...e.currentTarget.children].forEach(b => b.classList.toggle('active', b === btn));
-    render();
-  });
-
-  async function deleteEntry(id){
-    if(!confirm('Excluir esta entrada?')) return;
-    try{
-      await entriesRef.doc(id).delete();
-      if(editingId === id){ exitEditMode(); form.reset(); setDefaultDate(); updateLivePreview(); }
-    } catch(err){
-      console.error(err);
-      alert('Não foi possível excluir. Confira sua conexão.');
-    }
-    // a lista é atualizada automaticamente pelo onSnapshot acima
-  }
-
-  async function markResult(id, resultado){
-    try{
-      await entriesRef.doc(id).update({ resultado });
-    } catch(err){
-      console.error(err);
-      alert('Não foi possível salvar o resultado. Confira sua conexão.');
-    }
-    // a lista é atualizada automaticamente pelo onSnapshot acima
-  }
-
-  function render(){
-    renderProfitSummary();
-    const total = entries.length;
-    const withMargem = entries.map(en => ({...en, margem: calcMargem(en.media, en.linha)}));
-    const safeCount = withMargem.filter(en => isSafe(en.margem)).length;
-
-    // sempre a entrada mais recente no topo (usa a data informada, com fallback pra criação)
-    let list = withMargem.sort((a,b) => {
-      const ta = a.data ? new Date(a.data).getTime() : (a.createdAt && a.createdAt.toMillis ? a.createdAt.toMillis() : 0);
-      const tb = b.data ? new Date(b.data).getTime() : (b.createdAt && b.createdAt.toMillis ? b.createdAt.toMillis() : 0);
-      return tb - ta;
-    });
-    if(currentFilter === 'safe') list = list.filter(en => isSafe(en.margem));
-    if(currentFilter === 'warn') list = list.filter(en => !isSafe(en.margem));
-
-    if(list.length === 0){
-      container.innerHTML = `<div class="empty-state">${total === 0 ? 'Nenhuma entrada registrada ainda. Preencha o formulário ao lado.' : 'Nenhuma entrada nesse filtro.'}</div>`;
-      return;
-    }
-
-    container.innerHTML = list.map(en => {
-      const resultado = en.resultado || 'pendente';
-      let resultadoHtml;
-      let rowClass = 'is-pending';
-      if(resultado === 'green') rowClass = 'is-green';
-      else if(resultado === 'red') rowClass = 'is-red';
-      if(resultado === 'pendente'){
-        resultadoHtml = `
-          <div class="result-buttons">
-            <button class="result-btn green" onclick="markResult('${en.id}','green')">Green</button>
-            <button class="result-btn red" onclick="markResult('${en.id}','red')">Red</button>
-          </div>`;
-      } else {
-        resultadoHtml = `<span class="badge ${resultado === 'green' ? 'safe' : 'warn'} clickable" title="Clique para voltar a pendente" onclick="markResult('${en.id}','pendente')">${resultado === 'green' ? 'Green' : 'Red'}</span>`;
-      }
-      return `
-        <div class="entry-row ${rowClass}">
-          <div class="entry-team">
-            <div class="name">${escapeHtml(en.time)}</div>
-            <div class="meta">${en.data ? formatDate(en.data) + ' · ' : ''}${escapeHtml(en.mercado)} · ${en.mandante}${en.qtdJogos != null ? ' · últ. ' + en.qtdJogos + ' jogos' : ''}</div>
-          </div>
-          <div class="entry-num"><span class="k">Média (Tip Score)</span>${en.media.toFixed(2)}</div>
-          <div class="entry-num"><span class="k">Linha (Bet's)</span>${en.linha.toFixed(2)}</div>
-          <div class="entry-num"><span class="k">Odd</span>${en.odd.toFixed(2)}</div>
-          <div class="entry-num margem-ev"><span class="k">Margem EV+</span>${(en.margem >= 0 ? '+' : '') + en.margem.toFixed(2)}</div>
-          <div class="entry-status">${resultadoHtml}</div>
-          <div class="entry-actions">
-            <button class="icon-btn" title="Editar" onclick="enterEditMode('${en.id}')">✎</button>
-            <button class="icon-btn" title="Excluir" onclick="deleteEntry('${en.id}')">✕</button>
-          </div>
-        </div>
-      `;
-    }).join('');
-  }
 
   function escapeHtml(str){
     const d = document.createElement('div');
@@ -973,36 +559,11 @@
     if(!btn) return;
     const view = btn.dataset.view;
     [...document.getElementById('tabs').children].forEach(b => b.classList.toggle('active', b === btn));
-    document.getElementById('view-entradas').style.display = view === 'entradas' ? 'block' : 'none';
+    document.getElementById('view-analises').style.display = view === 'analises' ? 'block' : 'none';
     document.getElementById('view-calculadora').style.display = view === 'calculadora' ? 'grid' : 'none';
     document.getElementById('view-ganhos').style.display = view === 'ganhos' ? 'block' : 'none';
-    document.getElementById('view-analises').style.display = view === 'analises' ? 'block' : 'none';
     if(view === 'ganhos') renderGanhos();
   });
-
-  function renderProfitSummary(){
-    const settled = entries.filter(en => en.resultado === 'green' || en.resultado === 'red');
-    const greenCount = settled.filter(en => en.resultado === 'green').length;
-    const redCount = settled.filter(en => en.resultado === 'red').length;
-    const pendingCount = entries.length - settled.length;
-    const winRate = settled.length ? Math.round((greenCount / settled.length) * 100) : 0;
-
-    const totalEntradas = entries.length;
-    const withMargem = entries.map(en => ({...en, margem: calcMargem(en.media, en.linha)}));
-    const seguras = withMargem.filter(en => isSafe(en.margem)).length;
-    const pctSeguras = totalEntradas ? Math.round((seguras / totalEntradas) * 100) : 0;
-
-    const summary = document.getElementById('profit-summary');
-    summary.innerHTML = `
-      <div class="profit-card"><span class="num">${totalEntradas}</span><span class="label">entradas</span></div>
-      <div class="profit-card"><span class="num safe">${seguras}</span><span class="label">seguras</span></div>
-      <div class="profit-card"><span class="num">${pctSeguras}%</span><span class="label">acima do mínimo</span></div>
-      <div class="profit-card"><span class="num">${winRate}%</span><span class="label">taxa de acerto</span></div>
-      <div class="profit-card"><span class="num safe">${greenCount}</span><span class="label">green</span></div>
-      <div class="profit-card"><span class="num warn">${redCount}</span><span class="label">red</span></div>
-      <div class="profit-card"><span class="num">${pendingCount}</span><span class="label">pendentes</span></div>
-    `;
-  }
 
   // ---------------------------------------------------------------
   // Calculadora do dia — a lista aqui é só um resumo da sessão atual,
@@ -1281,8 +842,6 @@ Se algum dado estiver ilegível ou faltando, avise isso em vez de inventar núme
   document.getElementById('an-open').addEventListener('click', () => {
     window.open('https://claude.ai/new', '_blank');
   });
-
-  render();
 </script>
 </body>
 </html>
