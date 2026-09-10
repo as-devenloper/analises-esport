@@ -1150,7 +1150,21 @@ Se as imagens não tiverem dados suficientes ou legíveis pra uma sugestão conf
       }
       const textBlock = (data.content || []).map(c => c.type === 'text' ? c.text : '').join('\n');
       const clean = textBlock.replace(/```json|```/g, '').trim();
-      const parsed = JSON.parse(clean);
+      // procura o primeiro { até o último } — tolera texto extra antes/depois do JSON
+      const match = clean.match(/\{[\s\S]*\}/);
+      if(!match){
+        console.error('Resposta sem JSON reconhecível:', textBlock);
+        anResult.innerHTML = `<div class="empty-state">A IA respondeu, mas em um formato que não consegui ler. Tente novamente — se persistir, tente com menos prints por vez.</div>`;
+        return;
+      }
+      let parsed;
+      try{
+        parsed = JSON.parse(match[0]);
+      } catch(parseErr){
+        console.error('JSON inválido (provavelmente cortado):', textBlock);
+        anResult.innerHTML = `<div class="empty-state">A resposta da IA veio incompleta (provavelmente cortada). A chamada já foi processada — tente novamente com menos prints de uma vez.</div>`;
+        return;
+      }
       renderAnalise(parsed);
     } catch(err){
       console.error(err);
