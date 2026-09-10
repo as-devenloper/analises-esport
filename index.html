@@ -403,48 +403,61 @@
   .movement-row .icon-btn{margin-left:auto;font-family:var(--font-head);}
 
   /* ---------- Análises ---------- */
-  .an-steps{
-    margin:0 0 16px;
-    padding-left:20px;
+  .an-preview-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(90px, 1fr));
+    gap:8px;
+    margin-top:12px;
+  }
+  .an-thumb{
+    position:relative;
+    border-radius:8px;
+    overflow:hidden;
+    border:1px solid var(--border);
+    aspect-ratio:1;
+  }
+  .an-thumb img{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    display:block;
+  }
+  .an-thumb button{
+    position:absolute;
+    top:4px;
+    right:4px;
+    width:20px;
+    height:20px;
+    border-radius:50%;
+    border:none;
+    background:rgba(16,20,26,0.85);
+    color:var(--text);
+    font-size:12px;
+    line-height:1;
+    cursor:pointer;
+  }
+  .an-thumb button:hover{background:var(--warn);}
+  .an-justificativa{
     font-size:13.5px;
     color:var(--text-dim);
-    line-height:1.8;
-  }
-  .an-prompt-box{
-    background:var(--surface-2);
-    border:1px solid var(--border);
-    border-radius:8px;
-    padding:14px 16px;
-    font-family:var(--font-mono);
-    font-size:12.5px;
-    color:var(--text-dim);
     line-height:1.6;
-    white-space:pre-wrap;
-    overflow:hidden;
-    max-height:600px;
-    transition:max-height 0.2s ease, padding 0.2s ease;
+    margin:0;
   }
-  .an-prompt-box.collapsed{
-    max-height:0;
-    padding-top:0;
-    padding-bottom:0;
-    border-width:0;
-  }
-  .an-prompt-header{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    cursor:pointer;
+  .an-alertas{
+    margin:14px 0 0;
+    padding-left:18px;
     font-size:12.5px;
     color:var(--text-dim);
-    padding:2px 2px 8px;
-    user-select:none;
   }
-  .an-prompt-chevron{
-    transition:transform 0.2s ease;
+  .an-alertas li{margin-bottom:4px;}
+  .an-alertas-title{
+    display:block;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:0.04em;
     color:var(--text-faint);
+    margin-top:16px;
   }
-  .an-prompt-chevron.collapsed{transform:rotate(-90deg);}
 
   footer.note{
     margin-top:20px;
@@ -476,29 +489,28 @@
     <button class="tab-btn" data-view="ganhos">Banca - Ganhos/Perdas</button>
   </nav>
 
-  <div id="view-analises">
+  <div class="grid" id="view-analises">
     <section class="panel">
-      <h2>Análises com o Claude</h2>
-      <p class="sub">É só levar o print (e os dados, se quiser) pra uma conversa com o Claude. Precisa estar logado na sua conta.</p>
+      <h2>Enviar prints</h2>
+      <p class="sub">Envie um ou mais prints das médias do Tip Score (ou outro site de análise). A IA sugere a melhor entrada de valor, considerando odd mínima de 1.50.</p>
 
-      <ol class="an-steps">
-        <li>Tire um print das médias no Tip Score (ou outro site de análise).</li>
-        <li>Clique em "Copiar prompt".</li>
-        <li>Clique em "Abrir conversa com o Claude" — abre uma aba nova.</li>
-        <li>Cole o prompt, anexe o print e envie.</li>
-      </ol>
-
-      <div class="an-prompt-header" id="an-prompt-toggle">
-        <span>Ver prompt</span>
-        <span class="an-prompt-chevron collapsed" id="an-prompt-chevron">▾</span>
+      <div class="field">
+        <label for="an-file">Imagens do print</label>
+        <input type="file" id="an-file" accept="image/*" multiple>
       </div>
-      <div class="an-prompt-box collapsed" id="an-prompt-box"></div>
 
-      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;">
-        <button type="button" class="ghost" id="an-copy" style="width:auto;padding:10px 18px;">Copiar prompt</button>
-        <button type="button" class="primary" id="an-open" style="width:auto;padding:10px 18px;">Abrir conversa com o Claude</button>
+      <div id="an-preview-grid" class="an-preview-grid"></div>
+
+      <button type="button" class="primary" id="an-analyze" style="margin-top:16px;" disabled>Analisar com IA</button>
+      <button type="button" class="ghost" id="an-clear" style="display:none;">Limpar prints</button>
+    </section>
+
+    <section class="panel">
+      <h2>Sugestão da IA</h2>
+      <p class="sub">Sugestão gerada a partir dos prints, sempre com odd mínima de 1.50.</p>
+      <div id="an-result">
+        <div class="empty-state">Envie um ou mais prints e clique em "Analisar com IA" pra ver a sugestão aqui.</div>
       </div>
-      <span id="an-copy-status" style="font-size:12.5px;color:var(--safe);margin-top:8px;display:block;"></span>
     </section>
   </div>
 
@@ -621,7 +633,7 @@
     if(!btn) return;
     const view = btn.dataset.view;
     [...document.getElementById('tabs').children].forEach(b => b.classList.toggle('active', b === btn));
-    document.getElementById('view-analises').style.display = view === 'analises' ? 'block' : 'none';
+    document.getElementById('view-analises').style.display = view === 'analises' ? 'grid' : 'none';
     document.getElementById('view-calculadora').style.display = view === 'calculadora' ? 'grid' : 'none';
     document.getElementById('view-ganhos').style.display = view === 'ganhos' ? 'block' : 'none';
     if(view === 'ganhos') renderGanhos();
@@ -919,59 +931,126 @@
   }
 
   // ---------------------------------------------------------------
-  // Análises — sem backend: monta um prompt pronto e leva pra uma
-  // conversa nova com o Claude, onde você mesmo anexa o print.
+  // Análises — envia um ou mais prints pra IA (via seu backend no
+  // Cloudflare Workers, que guarda sua chave da API com segurança)
+  // e mostra a sugestão direto na tela.
   // ---------------------------------------------------------------
-  const AN_PROMPT = `Vou te mandar um ou mais prints de estatísticas de times, tirados de um site de análise esportiva (Tip Score). Eles mostram médias de mercados como gols, xG, finalizações, escanteios, faltas, cartões etc, geralmente separadas por mandante/visitante e por período (últimos 5 ou 10 jogos, por exemplo).
 
-Analise os números e monta a resposta EXATAMENTE nesse formato:
+  // Troque pela URL do seu Worker depois do deploy
+  // (ex: https://analisar-print.SEUUSUARIO.workers.dev)
+  const ANALISE_FUNCTION_URL = 'https://analisar-print.cezararthur83.workers.dev/';
 
-Analisei os dois painéis ([time casa] em casa / [time fora] fora, últimos [N]).
+  const anFile = document.getElementById('an-file');
+  const anPreviewGrid = document.getElementById('an-preview-grid');
+  const anAnalyzeBtn = document.getElementById('an-analyze');
+  const anClearBtn = document.getElementById('an-clear');
+  const anResult = document.getElementById('an-result');
 
-## Leitura rápida dos números
+  let anImages = []; // { id, base64, mediaType, previewUrl }
+  let anNextId = 1;
 
-Uma tabela markdown com colunas: Indicador | [Time A] (casa) | [Time B] (fora), listando todos os indicadores que aparecem nos prints.
-
-Minha entrada única: [mercado e linha sugeridos]
-
-Por quê: explique o raciocínio citando os números específicos que você viu nos prints (médias, consistência entre os dois lados, volume que sustenta a linha, qualquer fator de contexto relevante como arbitragem, confrontos diretos etc).
-
-Confiança: [nota]/10
-
-Stake sugerida: [X] unidade(s), com odd a partir de [Y] já tem valor — nunca sugira ou aceite odd abaixo de 1.50, mesmo que o valor pareça bom; se a odd mínima de valor for menor que 1.50, diga isso explicitamente em vez de recomendar a entrada.
-
-O que eu descartaria: outros mercados que aparecem nos números mas não têm valor claro, e por quê.
-
-Termine perguntando qual odd estou vendo, pra confirmar se o valor se mantém.
-
-Se algum dado estiver ilegível ou faltando, avise isso em vez de inventar números.`;
-
-  document.getElementById('an-prompt-box').textContent = AN_PROMPT;
-
-  document.getElementById('an-prompt-toggle').addEventListener('click', () => {
-    const box = document.getElementById('an-prompt-box');
-    const chevron = document.getElementById('an-prompt-chevron');
-    const label = document.querySelector('#an-prompt-toggle span');
-    const collapsed = box.classList.toggle('collapsed');
-    chevron.classList.toggle('collapsed', collapsed);
-    label.textContent = collapsed ? 'Ver prompt' : 'Minimizar prompt';
+  anFile.addEventListener('change', () => {
+    const files = [...anFile.files];
+    files.forEach(file => {
+      const mediaType = file.type || 'image/png';
+      const id = anNextId++;
+      const reader = new FileReader();
+      reader.onload = () => {
+        anImages.push({ id, base64: reader.result.split(',')[1], mediaType, previewUrl: reader.result });
+        renderAnPreview();
+      };
+      reader.readAsDataURL(file);
+    });
+    anFile.value = ''; // permite selecionar os mesmos arquivos de novo depois
   });
 
-  document.getElementById('an-copy').addEventListener('click', async () => {
-    const status = document.getElementById('an-copy-status');
+  function removeAnImage(id){
+    anImages = anImages.filter(img => img.id !== id);
+    renderAnPreview();
+  }
+
+  function renderAnPreview(){
+    anAnalyzeBtn.disabled = anImages.length === 0;
+    anClearBtn.style.display = anImages.length > 0 ? 'inline-block' : 'none';
+    anPreviewGrid.innerHTML = anImages.map(img => `
+      <div class="an-thumb">
+        <img src="${img.previewUrl}" alt="Print enviado">
+        <button type="button" title="Remover" onclick="removeAnImage(${img.id})">✕</button>
+      </div>
+    `).join('');
+  }
+
+  anClearBtn.addEventListener('click', () => {
+    anImages = [];
+    renderAnPreview();
+  });
+
+  const AN_PROMPT = `Você está analisando um ou mais prints de estatísticas de times, tirados de um site de análise esportiva (tipo Tip Score). Eles costumam mostrar médias de mercados como gols, xG, finalizações, escanteios, faltas, cartões etc, separadas por mandante/visitante e por período (últimos 5 ou 10 jogos, por exemplo). Se houver mais de um print, considere todos juntos antes de decidir.
+
+Sua tarefa: sugerir a MELHOR entrada de valor com base nesses números, considerando que a odd mínima aceitável é 1.50 — nunca sugira um mercado cuja odd típica costuma ficar abaixo disso.
+
+Responda APENAS com um objeto JSON, sem markdown, sem texto antes ou depois, exatamente neste formato:
+{"time": "...", "mercado": "...", "linha_sugerida": "...", "media_observada": "...", "odd_minima": "1.50", "justificativa": "...", "alertas": ["...", "..."]}
+
+Se as imagens não tiverem dados suficientes ou legíveis pra uma sugestão confiável, responda com {"erro": "motivo em uma frase"} em vez do formato acima.`;
+
+  anAnalyzeBtn.addEventListener('click', async () => {
+    if(anImages.length === 0) return;
+    if(ANALISE_FUNCTION_URL === 'COLE_AQUI_A_URL_DO_WORKER'){
+      anResult.innerHTML = `<div class="empty-state">Ainda falta colar a URL do seu Worker no código (ANALISE_FUNCTION_URL).</div>`;
+      return;
+    }
+    anAnalyzeBtn.disabled = true;
+    anAnalyzeBtn.textContent = 'Analisando…';
+    anResult.innerHTML = `<div class="empty-state">Analisando ${anImages.length > 1 ? 'os prints' : 'o print'}…</div>`;
+
     try{
-      await navigator.clipboard.writeText(AN_PROMPT);
-      status.style.color = 'var(--safe)';
-      status.textContent = 'Prompt copiado! Agora é só colar na conversa com o Claude.';
+      const response = await fetch(ANALISE_FUNCTION_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          images: anImages.map(img => ({ mediaType: img.mediaType, base64: img.base64 })),
+          prompt: AN_PROMPT
+        })
+      });
+      const data = await response.json();
+      if(data.erro){
+        anResult.innerHTML = `<div class="empty-state">${escapeHtml(data.erro)}</div>`;
+        return;
+      }
+      const textBlock = (data.content || []).map(c => c.type === 'text' ? c.text : '').join('\n');
+      const clean = textBlock.replace(/```json|```/g, '').trim();
+      const parsed = JSON.parse(clean);
+      renderAnalise(parsed);
     } catch(err){
-      status.style.color = 'var(--warn)';
-      status.textContent = 'Não consegui copiar automaticamente — selecione o texto acima e copie manualmente.';
+      console.error(err);
+      anResult.innerHTML = `<div class="empty-state">Não foi possível analisar agora. Tente de novo em instantes.</div>`;
+    } finally {
+      anAnalyzeBtn.disabled = false;
+      anAnalyzeBtn.textContent = 'Analisar com IA';
     }
   });
 
-  document.getElementById('an-open').addEventListener('click', () => {
-    window.open('https://claude.ai/new', '_blank');
-  });
+  function renderAnalise(p){
+    if(p.erro){
+      anResult.innerHTML = `<div class="empty-state">${escapeHtml(p.erro)}</div>`;
+      return;
+    }
+    const alertasHtml = (p.alertas && p.alertas.length)
+      ? `<span class="an-alertas-title">Pontos de atenção</span><ul class="an-alertas">${p.alertas.map(a => `<li>${escapeHtml(a)}</li>`).join('')}</ul>`
+      : '';
+    anResult.innerHTML = `
+      <div class="profit-summary" style="margin-bottom:16px;">
+        <div class="profit-card"><span class="num">${escapeHtml(p.time || '—')}</span><span class="label">time</span></div>
+        <div class="profit-card"><span class="num">${escapeHtml(p.mercado || '—')}</span><span class="label">mercado</span></div>
+        <div class="profit-card"><span class="num">${escapeHtml(p.linha_sugerida || '—')}</span><span class="label">linha sugerida</span></div>
+        <div class="profit-card"><span class="num safe">${escapeHtml(p.media_observada || '—')}</span><span class="label">média observada</span></div>
+        <div class="profit-card"><span class="num safe">${escapeHtml(p.odd_minima || '1.50')}</span><span class="label">odd mínima</span></div>
+      </div>
+      <p class="an-justificativa">${escapeHtml(p.justificativa || '')}</p>
+      ${alertasHtml}
+    `;
+  }
 </script>
 </body>
 </html>
