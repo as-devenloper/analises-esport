@@ -547,6 +547,35 @@
     border-radius:20px;
     margin:6px 6px 0 0;
   }
+  .an-linhas-table{
+    margin:16px 0;
+    border:1px solid var(--border);
+    border-radius:8px;
+    overflow:hidden;
+  }
+  .an-linhas-table .an-alertas-title{margin:0;padding:10px 12px 6px;}
+  .an-linhas-header{
+    display:grid;
+    grid-template-columns:1.2fr 0.7fr 1.3fr;
+    gap:8px;
+    padding:6px 12px;
+    font-size:10.5px;
+    text-transform:uppercase;
+    letter-spacing:0.03em;
+    color:var(--text-faint);
+    border-bottom:1px solid var(--border);
+  }
+  .an-linhas-row{
+    display:grid;
+    grid-template-columns:1.2fr 0.7fr 1.3fr;
+    gap:8px;
+    padding:9px 12px;
+    font-size:12.5px;
+    color:var(--text-dim);
+    border-bottom:1px solid var(--border);
+  }
+  .an-linhas-row:last-child{border-bottom:none;}
+  .an-linhas-row .mono{font-family:var(--font-mono);color:var(--text);font-weight:600;}
   .an-check-box{
     margin-top:18px;
     padding-top:16px;
@@ -1286,18 +1315,23 @@
 
   const AN_PROMPT = `Você está analisando estatísticas de times de um site de análise esportiva (tipo Tip Score) — pode vir como print (imagem) e/ou como texto extraído direto da página, dependendo do que foi enviado. Eles costumam mostrar médias de mercados como gols, xG, finalizações, escanteios, faltas, cartões etc, separadas por mandante/visitante e por período (últimos 5 ou 10 jogos, por exemplo). Quando vier texto extraído da página, ele tende a ser mais completo e confiável que print (inclui jogo a jogo, CV, etc) — priorize esses dados quando disponíveis. Se houver mais de uma fonte, considere todas juntas antes de decidir.
 
-SOBRE O TEXTO EXTRAÍDO DA PÁGINA: trechos entre ** ** (ex: **6.6**) estavam em negrito/destaque na página original — isso preserva uma informação visual importante. Em células com números empilhados (ex: "10.8 **6.6** 4.2"), o padrão observado é: o número do meio em negrito é o valor específico de UM time (o time em foco/mandante), enquanto os números menores ao redor costumam ser o total combinado dos dois times e/ou o valor do adversário (repare que muitas vezes os dois menores somados batem com o maior — isso confirma que o maior é o total, não a média de um time só). NUNCA trate o número "total combinado dos dois times" como se fosse a média de um único time — isso infla a análise. Use o contexto (nomes dos times, cabeçalhos de coluna) pra confirmar o que cada número representa antes de decidir.
+SOBRE O TEXTO EXTRAÍDO DA PÁGINA: trechos entre ** ** (ex: **6.6**) estavam em negrito/destaque na página original. Em células com números empilhados (ex: "10.8 **6.6** 4.2"), o padrão observado é: o número do meio em negrito é o valor específico de UM time, enquanto os números menores ao redor costumam ser o total combinado dos dois times e/ou o valor do adversário (muitas vezes os dois menores somados batem com o maior — isso confirma que o maior é o total). NUNCA trate o número "total combinado dos dois times" como se fosse a média de um único time.
 
-IMPORTANTE: antes de escolher, avalie TODOS os mercados visíveis nos prints (não escolha escanteios ou qualquer outro por hábito). Para cada mercado presente, compare a consistência entre os números dos dois times (ex: desvio, outliers, volume de jogos). Só depois disso escolha o de MELHOR valor — pode ser qualquer um deles, o critério é qual tem a combinação mais forte de consistência + margem, não uma preferência fixa por um tipo de mercado.
+MÉTODO DE PROJEÇÃO (siga essa ordem):
+1. Escolha o mercado avaliando TODOS os que aparecem nos dados (não escolha por hábito). Compare consistência entre os dois times (desvio, CV, outliers, volume de jogos).
+2. Projete a expectativa do jogo pra esse mercado SOMANDO o recorte específico de cada time quando disponível — ex: média do mandante EM CASA + média do visitante FORA (não a média geral de cada time, que mistura jogos em casa e fora). Essa soma tende a ser mais precisa que usar só uma média combinada genérica.
+3. A partir dessa expectativa, monte uma pequena tabela com 2 a 3 linhas de mercado próximas (uma abaixo da expectativa, uma nela, uma acima), calculando a odd justa de cada uma (baseada na probabilidade estimada de passar daquela linha, JÁ com o desconto do item 4). Anote pra cada linha se tem valor, valor baixo, ou risco maior — a linha escolhida deve ser a de MELHOR relação risco/retorno, não necessariamente a de maior valor bruto (uma margem de segurança maior costuma valer mais que um pouco mais de odd).
+4. SEJA CONSERVADOR NA PROBABILIDADE: amostras de 5-10 jogos são pequenas. "Bateu em 9 de 10" NÃO é 90% real — é excesso de confiança. Puxe a taxa bruta em direção a 50%, tipicamente descontando 15-25 pontos percentuais (mais desconto quanto menor a amostra ou maior o CV). NUNCA estime acima de 80%, mesmo com amostra "perfeita".
+5. Considere fatores de contexto que ajudam a explicar ou reforçar a direção (favoritismo/disputa esperada, estilo de jogo, mando de campo, tendência recente jogo a jogo) — mas como reforço da leitura numérica, não como substituto dela.
+6. Só sugira se pelo menos DOIS sinais independentes apontarem na mesma direção. Descarte e registre em "descartados" os outros mercados/linhas avaliados que não tinham valor real, com o motivo numérico (ex: "Gols: expectativa combinada ~2.2, Over 2.5 sem valor").
+7. Depois de tudo, se a odd de valor da melhor linha ficar abaixo do piso de 1.50, ou se os sinais forem fracos/conflitantes, ou os dados forem insuficientes: responda com erro em vez de forçar uma sugestão. Prefira não sugerir a sugerir mal.
 
-CÁLCULO DA ODD DE VALOR: depois de escolher o mercado, estime a probabilidade real da linha bater, com base na consistência histórica que você viu (ex: se bateu em 9 de 10 jogos considerando os dois times, a probabilidade estimada gira em torno de 80-90%). A partir dessa probabilidade, calcule a odd justa (aproximadamente 1 / probabilidade). Essa é a "odd de valor" que você deve retornar — um número calculado a partir dos dados, NUNCA um valor fixo genérico. A única regra fixa é o piso: se a odd de valor calculada dessa forma ficar abaixo de 1.50, esse mercado não vale a pena — descarte e escolha outro, ou responda com erro se nenhum mercado passar desse piso.
-
-MOMENTO REAL DOS TIMES: não fique só na média fria. Se o print mostrar dados individuais por jogo (não só a média consolidada), comente na justificativa se há uma tendência clara nos jogos mais recentes — o time está subindo, caindo ou estável nesse mercado? Isso é diferente de "a média é X": é sobre se os jogos MAIS RECENTES estão acima, na linha, ou abaixo dessa média, o que muda a confiança na entrada. Se o print só tiver a média consolidada, sem abertura por jogo, diga isso claramente e baseie-se só na média mesmo — não invente tendência que não dá pra ver nos dados.
+MOMENTO REAL DOS TIMES: se os dados mostrarem jogo a jogo (não só a média consolidada), comente se há tendência clara nos jogos mais recentes (subindo, caindo, estável). Se só houver a média consolidada, diga isso e não invente tendência.
 
 Responda APENAS com um objeto JSON, sem markdown, sem texto antes ou depois, exatamente neste formato:
-{"time": "...", "mercado": "...", "linha_sugerida": "...", "media_observada": "...", "odd_valor": "odd calculada a partir da probabilidade estimada, ex: 1.65", "probabilidade_estimada": "ex: 78%", "justificativa": "no máximo 4 frases, direto ao ponto, incluindo como chegou nessa probabilidade e o momento real dos times (tendência recente ou aviso de que só há média consolidada)", "mercados_avaliados": ["lista curta de TODOS os mercados que você viu e considerou, ex: Gols, xG, Finalizações, Escanteios, Faltas, Cartões"], "alertas": ["no máximo 3 itens, cada um em uma frase curta"]}
+{"time": "...", "mercado": "...", "linha_sugerida": "...", "media_observada": "ex: 5.8 casa (Flu) + 10.4 fora (Platense) → projeção 9.7", "odd_valor": "odd justa calculada da linha escolhida, ex: 1.65", "probabilidade_estimada": "ex: 61% (já descontada)", "amostra": "ex: 5 jogos cada lado, CV 0.31", "tabela_linhas": [{"linha": "ex: Mais de 7.5", "odd_justa": "1.35", "situacao": "positivo mas odd baixa"}, {"linha": "ex: Mais de 8.5", "odd_justa": "1.61", "situacao": "melhor relação"}, {"linha": "ex: Mais de 9.5", "odd_justa": "1.85", "situacao": "valor alto, risco maior"}], "justificativa": "no máximo 4 frases: a lógica do cálculo aditivo, o desconto aplicado, e por que essa linha (não outra) tem a melhor relação risco/retorno", "descartados": [{"mercado": "ex: Gols", "motivo": "frase curta com o número que descarta"}], "mercados_avaliados": ["lista curta de todos os mercados vistos"], "alertas": ["no máximo 3 itens curtos"]}
 
-Seja objetivo em todos os campos de texto — respostas longas correm risco de ser cortadas antes de terminar o JSON. O JSON precisa ser válido: tudo em uma linha só, sem quebra de linha dentro dos textos (troque por espaço ou vírgula). Se nenhum mercado passar do piso de 1.50 de odd de valor, ou se as imagens não tiverem dados suficientes ou legíveis pra uma sugestão confiável, responda com {"erro": "motivo em uma frase"} em vez do formato acima.`;
+Seja objetivo em todos os campos — respostas longas correm risco de cortar o JSON. O JSON precisa ser válido: tudo em uma linha só, sem quebra de linha dentro dos textos. Se nenhuma linha passar do piso de 1.50 depois do desconto, ou os dados forem insuficientes, responda com {"erro": "motivo em uma frase"} em vez do formato acima.`;
 
   anAnalyzeBtn.addEventListener('click', async () => {
     if(anImages.length === 0 && !anHtmlText) return;
@@ -1367,6 +1401,9 @@ Seja objetivo em todos os campos de texto — respostas longas correm risco de s
         media_observada: p.media_observada || null,
         odd_valor: p.odd_valor || null,
         probabilidade_estimada: p.probabilidade_estimada || null,
+        amostra: p.amostra || null,
+        tabela_linhas: p.tabela_linhas || [],
+        descartados: p.descartados || [],
         justificativa: p.justificativa || null,
         mercados_avaliados: p.mercados_avaliados || [],
         alertas: p.alertas || [],
@@ -1390,6 +1427,16 @@ Seja objetivo em todos os campos de texto — respostas longas correm risco de s
     const mercadosHtml = (p.mercados_avaliados && p.mercados_avaliados.length)
       ? `<div class="an-mercados-avaliados"><span class="an-alertas-title">Mercados avaliados</span>${p.mercados_avaliados.map(m => `<span class="an-mercado-chip">${escapeHtml(m)}</span>`).join('')}</div>`
       : '';
+    const tabelaLinhasHtml = (p.tabela_linhas && p.tabela_linhas.length)
+      ? `<div class="an-linhas-table">
+          <span class="an-alertas-title">Comparativo de linhas</span>
+          <div class="an-linhas-header"><span>Linha</span><span>Odd justa</span><span>Situação</span></div>
+          ${p.tabela_linhas.map(l => `<div class="an-linhas-row"><span>${escapeHtml(l.linha || '—')}</span><span class="mono">${escapeHtml(l.odd_justa || '—')}</span><span>${escapeHtml(l.situacao || '—')}</span></div>`).join('')}
+        </div>`
+      : '';
+    const descartadosHtml = (p.descartados && p.descartados.length)
+      ? `<div class="an-mercados-avaliados"><span class="an-alertas-title">Descartados</span><ul class="an-alertas">${p.descartados.map(d => `<li><strong>${escapeHtml(d.mercado || '—')}:</strong> ${escapeHtml(d.motivo || '')}</li>`).join('')}</ul></div>`
+      : '';
     anResult.innerHTML = `
       <div class="an-suggestion-top">
         <div>
@@ -1403,9 +1450,13 @@ Seja objetivo em todos os campos de texto — respostas longas correm risco de s
         <div class="stat-chip"><span class="stat-chip-label">Média observada</span><span class="stat-chip-value safe">${escapeHtml(p.media_observada || '—')}</span></div>
         <div class="stat-chip"><span class="stat-chip-label">Odd de valor</span><span class="stat-chip-value safe">${escapeHtml(p.odd_valor || '—')}</span></div>
         ${p.probabilidade_estimada ? `<div class="stat-chip"><span class="stat-chip-label">Probabilidade estimada</span><span class="stat-chip-value">${escapeHtml(p.probabilidade_estimada)}</span></div>` : ''}
+        ${p.amostra ? `<div class="stat-chip"><span class="stat-chip-label">Amostra</span><span class="stat-chip-value">${escapeHtml(p.amostra)}</span></div>` : ''}
       </div>
 
+      ${tabelaLinhasHtml}
+
       <p class="an-justificativa">${escapeHtml(p.justificativa || '')}</p>
+      ${descartadosHtml}
       ${mercadosHtml}
       ${alertasHtml}
 
@@ -1644,6 +1695,16 @@ Se não conseguir ler a odd ou os mercados no print, responda com {"erro": "moti
       const alertasHtml = (a.alertas && a.alertas.length)
         ? `<span class="an-alertas-title">Pontos de atenção</span><ul class="an-alertas">${a.alertas.map(al => `<li>${escapeHtml(al)}</li>`).join('')}</ul>`
         : '';
+      const tabelaLinhasHtml = (a.tabela_linhas && a.tabela_linhas.length)
+        ? `<div class="an-linhas-table">
+            <span class="an-alertas-title">Comparativo de linhas</span>
+            <div class="an-linhas-header"><span>Linha</span><span>Odd justa</span><span>Situação</span></div>
+            ${a.tabela_linhas.map(l => `<div class="an-linhas-row"><span>${escapeHtml(l.linha || '—')}</span><span class="mono">${escapeHtml(l.odd_justa || '—')}</span><span>${escapeHtml(l.situacao || '—')}</span></div>`).join('')}
+          </div>`
+        : '';
+      const descartadosHtml = (a.descartados && a.descartados.length)
+        ? `<div class="an-mercados-avaliados"><span class="an-alertas-title">Descartados</span><ul class="an-alertas">${a.descartados.map(d => `<li><strong>${escapeHtml(d.mercado || '—')}:</strong> ${escapeHtml(d.motivo || '')}</li>`).join('')}</ul></div>`
+        : '';
 
       return `
         <div class="an-saved-item">
@@ -1662,8 +1723,11 @@ Se não conseguir ler a odd ou os mercados no print, responda com {"erro": "moti
               <div class="stat-chip"><span class="stat-chip-label">Média observada</span><span class="stat-chip-value safe">${escapeHtml(a.media_observada || '—')}</span></div>
               <div class="stat-chip"><span class="stat-chip-label">Odd de valor</span><span class="stat-chip-value safe">${escapeHtml(a.odd_valor || '—')}</span></div>
               ${a.probabilidade_estimada ? `<div class="stat-chip"><span class="stat-chip-label">Probabilidade estimada</span><span class="stat-chip-value">${escapeHtml(a.probabilidade_estimada)}</span></div>` : ''}
+              ${a.amostra ? `<div class="stat-chip"><span class="stat-chip-label">Amostra</span><span class="stat-chip-value">${escapeHtml(a.amostra)}</span></div>` : ''}
             </div>
+            ${tabelaLinhasHtml}
             ${a.justificativa ? `<p class="an-justificativa">${escapeHtml(a.justificativa)}</p>` : ''}
+            ${descartadosHtml}
             ${mercadosHtml}
             ${alertasHtml}
           </div>
