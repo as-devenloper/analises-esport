@@ -478,6 +478,38 @@
   }
   .an-check-box input:focus{outline:none;border-color:var(--accent);}
 
+  /* ---------- Result buttons (Green/Red) ---------- */
+  .result-buttons{display:flex;gap:5px;}
+  .result-btn{
+    font-family:var(--font-head);
+    font-size:11px;
+    font-weight:600;
+    border-radius:5px;
+    padding:4px 8px;
+    cursor:pointer;
+    background:transparent;
+  }
+  .result-btn.green{border:1px solid var(--safe);color:var(--safe);}
+  .result-btn.green:hover{background:var(--safe-bg);}
+  .result-btn.red{border:1px solid var(--warn);color:var(--warn);}
+  .result-btn.red:hover{background:var(--warn-bg);}
+  .badge.clickable{cursor:pointer;}
+
+  .an-saved-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:14px;
+    padding:14px;
+    border-bottom:1px solid var(--border);
+    flex-wrap:wrap;
+  }
+  .an-saved-row:last-child{border-bottom:none;}
+  .an-saved-info{min-width:0;flex:1;}
+  .an-saved-info .name{font-weight:600;font-size:14px;}
+  .an-saved-info .meta{font-size:11.5px;color:var(--text-dim);margin-top:2px;line-height:1.4;}
+  .an-saved-actions{display:flex;align-items:center;gap:10px;}
+
   footer.note{
     margin-top:20px;
     font-size:12px;
@@ -530,6 +562,12 @@
       <div id="an-result">
         <div class="empty-state">Envie um ou mais prints e clique em "Analisar com IA" pra ver a sugestão aqui.</div>
       </div>
+    </section>
+
+    <section class="panel" style="grid-column: 1 / -1;">
+      <h2>Análises salvas</h2>
+      <p class="sub">Cada análise feita fica salva aqui — marque Green ou Red pra acompanhar o resultado.</p>
+      <div id="an-saved-container"></div>
     </section>
   </div>
 
@@ -624,6 +662,7 @@
   firebase.initializeApp(firebaseConfig);
   const db = firebase.firestore();
   const movimentosRef = db.collection('movimentos');
+  const analisesRef = db.collection('analises');
 
   // Cada aposta enviada pela Calculadora vira um documento aqui —
   // isso permite listar e apagar movimentações específicas por dia.
@@ -632,6 +671,17 @@
     (snapshot) => {
       movimentosAll = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       if(document.getElementById('view-ganhos').style.display !== 'none') renderGanhos();
+    },
+    (err) => console.error(err)
+  );
+
+  // Cada análise feita pela IA fica salva aqui, com o resultado
+  // (pendente/green/red) marcado manualmente depois.
+  let analisesAll = [];
+  analisesRef.orderBy('createdAt', 'desc').onSnapshot(
+    (snapshot) => {
+      analisesAll = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      renderAnalisesSalvas();
     },
     (err) => console.error(err)
   );
@@ -1050,6 +1100,27 @@ Se as imagens não tiverem dados suficientes ou legíveis pra uma sugestão conf
     }
   });
 
+  let lastSavedAnaliseId = null;
+
+  async function saveAnalise(p){
+    try{
+      const docRef = await analisesRef.add({
+        time: p.time || null,
+        mercado: p.mercado || null,
+        linha_sugerida: p.linha_sugerida || null,
+        media_observada: p.media_observada || null,
+        odd_minima: p.odd_minima || '1.50',
+        justificativa: p.justificativa || null,
+        alertas: p.alertas || [],
+        resultado: 'pendente',
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      lastSavedAnaliseId = docRef.id;
+    } catch(err){
+      console.error(err);
+    }
+  }
+
   function renderAnalise(p){
     if(p.erro){
       anResult.innerHTML = `<div class="empty-state">${escapeHtml(p.erro)}</div>`;
@@ -1079,6 +1150,8 @@ Se as imagens não tiverem dados suficientes ou legíveis pra uma sugestão conf
       </div>
     `;
 
+    saveAnalise(p);
+
     const oddMinima = parseFloat(String(p.odd_minima || '1.50').replace(',', '.'));
     const oddInput = document.getElementById('an-check-odd');
     maskDecimalInput(oddInput);
@@ -1091,14 +1164,72 @@ Se as imagens não tiverem dados suficientes ou legíveis pra uma sugestão conf
         resultEl.textContent = 'Digite a odd que você viu na casa.';
         return;
       }
-      if(oddVista >= oddMinima){
+      const temValor = oddVista >= oddMinima;
+      if(temValor){
         resultEl.style.color = 'var(--safe)';
         resultEl.textContent = `✓ Tem valor — ${oddVista.toFixed(2)} está igual ou acima da odd mínima sugerida (${oddMinima.toFixed(2)}).`;
       } else {
         resultEl.style.color = 'var(--warn)';
         resultEl.textContent = `✕ Sem valor — ${oddVista.toFixed(2)} está abaixo da odd mínima sugerida (${oddMinima.toFixed(2)}).`;
       }
+      if(lastSavedAnaliseId){
+        analisesRef.doc(lastSavedAnaliseId).update({ oddVista, temValor }).catch(err => console.error(err));
+      }
     });
+  }
+
+  async function markAnaliseResult(id, resultado){
+    try{
+      await analisesRef.doc(id).update({ resultado });
+    } catch(err){
+      console.error(err);
+      alert('Não foi possível salvar o resultado. Confira sua conexão.');
+    }
+  }
+
+  async function deleteAnalise(id){
+    if(!confirm('Excluir essa análise salva?')) return;
+    try{
+      await analisesRef.doc(id).delete();
+    } catch(err){
+      console.error(err);
+      alert('Não foi possível excluir. Confira sua conexão.');
+    }
+  }
+
+  function renderAnalisesSalvas(){
+    const container = document.getElementById('an-saved-container');
+    if(analisesAll.length === 0){
+      container.innerHTML = `<div class="empty-state">Nenhuma análise salva ainda. Analise um print pra ela aparecer aqui.</div>`;
+      return;
+    }
+    container.innerHTML = analisesAll.map(a => {
+      const resultado = a.resultado || 'pendente';
+      let resultadoHtml;
+      if(resultado === 'pendente'){
+        resultadoHtml = `
+          <div class="result-buttons">
+            <button class="result-btn green" onclick="markAnaliseResult('${a.id}','green')">Green</button>
+            <button class="result-btn red" onclick="markAnaliseResult('${a.id}','red')">Red</button>
+          </div>`;
+      } else {
+        const badge = resultadoBadge(resultado);
+        resultadoHtml = `<span class="badge ${badge.cls} clickable" title="Clique para voltar a pendente" onclick="markAnaliseResult('${a.id}','pendente')">${badge.label}</span>`;
+      }
+      const oddInfo = a.oddVista != null ? ` · odd vista ${Number(a.oddVista).toFixed(2)}${a.temValor === false ? ' (sem valor)' : ''}` : '';
+      return `
+        <div class="an-saved-row">
+          <div class="an-saved-info">
+            <div class="name">${escapeHtml(a.time || '—')} · ${escapeHtml(a.mercado || '—')}</div>
+            <div class="meta">Linha ${escapeHtml(a.linha_sugerida || '—')} · odd mínima ${escapeHtml(a.odd_minima || '1.50')}${oddInfo}</div>
+          </div>
+          <div class="an-saved-actions">
+            ${resultadoHtml}
+            <button class="icon-btn" title="Excluir" onclick="deleteAnalise('${a.id}')">✕</button>
+          </div>
+        </div>
+      `;
+    }).join('');
   }
 </script>
 </body>
