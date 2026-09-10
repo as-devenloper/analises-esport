@@ -229,6 +229,7 @@
   }
   .badge.safe{background:var(--safe-bg);color:var(--safe);}
   .badge.warn{background:var(--warn-bg);color:var(--warn);}
+  .badge.cashout{background:rgba(91,141,239,0.12);color:var(--accent);}
 
   .entry-actions{display:flex;gap:6px;justify-content:flex-end;}
   .icon-btn{
@@ -482,10 +483,10 @@
       </ol>
 
       <div class="an-prompt-header" id="an-prompt-toggle">
-        <span>Minimizar prompt</span>
-        <span class="an-prompt-chevron" id="an-prompt-chevron">▾</span>
+        <span>Ver prompt</span>
+        <span class="an-prompt-chevron collapsed" id="an-prompt-chevron">▾</span>
       </div>
-      <div class="an-prompt-box" id="an-prompt-box"></div>
+      <div class="an-prompt-box collapsed" id="an-prompt-box"></div>
 
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;">
         <button type="button" class="ghost" id="an-copy" style="width:auto;padding:10px 18px;">Copiar prompt</button>
@@ -522,7 +523,13 @@
           <div class="toggle-group" id="c-resultado-group">
             <button type="button" data-val="green" class="active">Green</button>
             <button type="button" data-val="red">Red</button>
+            <button type="button" data-val="cashout">Cashout</button>
           </div>
+        </div>
+
+        <div class="field" id="c-cashout-field" style="display:none;">
+          <label for="c-cashout-valor">Valor recebido no cashout (R$)</label>
+          <input type="number" id="c-cashout-valor" step="0.01" min="0" placeholder="30.00">
         </div>
 
         <button type="submit" class="primary">Adicionar</button>
@@ -632,10 +639,19 @@
     if(!btn) return;
     calcResultadoVal = btn.dataset.val;
     [...calcResultadoGroup.children].forEach(b => b.classList.toggle('active', b === btn));
+    document.getElementById('c-cashout-field').style.display = calcResultadoVal === 'cashout' ? 'block' : 'none';
   });
 
   function lucroDe(c){
+    if(c.resultado === 'cashout') return (c.cashoutValor != null ? c.cashoutValor : 0) - c.valor;
     return c.resultado === 'green' ? c.valor * (c.odd - 1) : -c.valor;
+  }
+
+  function resultadoBadge(resultado){
+    if(resultado === 'green') return { cls: 'safe', label: 'Green' };
+    if(resultado === 'red') return { cls: 'warn', label: 'Red' };
+    if(resultado === 'cashout') return { cls: 'cashout', label: 'Cashout' };
+    return { cls: '', label: resultado };
   }
 
   function formatBRL(n){
@@ -653,23 +669,37 @@
     const odd = parseFloat(document.getElementById('c-odd').value);
     const valor = parseFloat(document.getElementById('c-valor').value);
     const resultado = calcResultadoVal;
-    const lucro = Math.round(lucroDe({ odd, valor, resultado }) * 100) / 100;
+
+    let cashoutValor = null;
+    if(resultado === 'cashout'){
+      cashoutValor = parseFloat(document.getElementById('c-cashout-valor').value);
+      if(isNaN(cashoutValor)){
+        alert('Informe o valor recebido no cashout.');
+        return;
+      }
+    }
+
+    const lucro = Math.round(lucroDe({ odd, valor, resultado, cashoutValor }) * 100) / 100;
     const localId = calcNextId++;
-    const entry = { id: localId, data: dataStr, odd, valor, resultado, firestoreId: null };
+    const entry = { id: localId, data: dataStr, odd, valor, resultado, cashoutValor, firestoreId: null };
     calcEntries.push(entry);
     document.getElementById('c-odd').value = '';
     document.getElementById('c-valor').value = '';
+    document.getElementById('c-cashout-valor').value = '';
+    document.getElementById('c-cashout-field').style.display = 'none';
     document.getElementById('c-odd').focus();
     calcResultadoVal = 'green';
     [...calcResultadoGroup.children].forEach(b => b.classList.toggle('active', b.dataset.val === 'green'));
     renderCalc();
 
     try{
-      const docRef = await movimentosRef.add({
+      const docData = {
         data: dataStr,
         odd, valor, resultado, lucro,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
+      };
+      if(resultado === 'cashout') docData.cashoutValor = cashoutValor;
+      const docRef = await movimentosRef.add(docData);
       const found = calcEntries.find(c => c.id === localId);
       if(found) found.firestoreId = docRef.id;
     } catch(err){
@@ -705,12 +735,13 @@
 
     calcContainer.innerHTML = calcEntries.map((c) => {
       const lucro = lucroDe(c);
+      const badge = resultadoBadge(c.resultado);
       return `
         <div class="calc-row">
           <div class="entry-num" style="text-align:left;"><span class="k">Data</span>${formatDate(c.data)}</div>
           <div class="entry-num"><span class="k">Odd</span>${c.odd.toFixed(2)}</div>
           <div class="entry-num"><span class="k">Valor</span>${formatBRL(c.valor)}</div>
-          <div class="entry-status"><span class="badge ${c.resultado === 'green' ? 'safe' : 'warn'}">${c.resultado === 'green' ? 'Green' : 'Red'}</span></div>
+          <div class="entry-status"><span class="badge ${badge.cls}">${badge.label}</span></div>
           <div class="entry-actions">
             <button class="icon-btn" title="Remover" onclick="removeCalcEntry(${c.id})">✕</button>
           </div>
@@ -814,15 +845,18 @@
         const dayTotal = movs.reduce((sum, mv) => sum + mv.lucro, 0);
         const isOpen = expandedDate === dateStr;
 
-        const movRows = movs.map(mv => `
+        const movRows = movs.map(mv => {
+          const badge = resultadoBadge(mv.resultado);
+          return `
           <div class="movement-row">
             <span>Odd ${mv.odd.toFixed(2)}</span>
             <span>${formatBRL(mv.valor)}</span>
-            <span class="badge ${mv.resultado === 'green' ? 'safe' : 'warn'}">${mv.resultado === 'green' ? 'Green' : 'Red'}</span>
+            <span class="badge ${badge.cls}">${badge.label}</span>
             <span class="${mv.lucro >= 0 ? 'safe' : 'warn'}" style="font-family:var(--font-mono);font-weight:600;">${(mv.lucro >= 0 ? '+' : '-') + formatBRL(Math.abs(mv.lucro))}</span>
             <button class="icon-btn" title="Remover essa aposta" onclick="deleteMovimento('${mv.id}')">✕</button>
           </div>
-        `).join('');
+        `;
+        }).join('');
 
         return `
           <div class="day-item">
