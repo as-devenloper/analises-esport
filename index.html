@@ -1187,6 +1187,32 @@
     anFile.value = ''; // permite selecionar os mesmos arquivos de novo depois
   });
 
+  // Extrai texto preservando negrito (classes Tailwind font-bold/font-semibold)
+  // como marcação **assim**, já que innerText descartava essa informação —
+  // e o negrito costuma indicar qual número é o valor principal do time.
+  function extractTextWithBold(node){
+    let out = '';
+    for(const child of node.childNodes){
+      if(child.nodeType === Node.TEXT_NODE){
+        out += child.textContent;
+      } else if(child.nodeType === Node.ELEMENT_NODE){
+        const tag = child.tagName.toLowerCase();
+        if(['script','style','noscript','svg','img'].includes(tag)) continue;
+        const cls = typeof child.className === 'string' ? child.className : '';
+        const isBold = /font-(bold|semibold|extrabold)|(^|\s)bold(\s|$)/.test(cls);
+        const inner = extractTextWithBold(child);
+        if(isBold && inner.trim()){
+          out += '**' + inner.trim() + '**';
+        } else {
+          out += inner;
+        }
+        if(['div','tr','p','li','h1','h2','h3','h4','h5','h6','section','article'].includes(tag)) out += '\n';
+        else out += ' ';
+      }
+    }
+    return out;
+  }
+
   anHtmlFile.addEventListener('change', () => {
     const file = anHtmlFile.files[0];
     if(!file) return;
@@ -1194,9 +1220,10 @@
     reader.onload = () => {
       try{
         const doc = new DOMParser().parseFromString(reader.result, 'text/html');
-        // remove scripts/estilos que não têm dado nenhum, só ruído
         doc.querySelectorAll('script, style, noscript').forEach(el => el.remove());
-        const text = (doc.body ? doc.body.innerText : doc.documentElement.innerText || '').trim();
+        const raw = extractTextWithBold(doc.body || doc.documentElement);
+        // limpa espaços/linhas em excesso que a extração pode gerar
+        const text = raw.replace(/[ \t]+/g, ' ').replace(/\n[ \t]*\n+/g, '\n').replace(/ *\n */g, '\n').trim();
         if(!text){
           anHtmlStatus.style.color = 'var(--warn)';
           anHtmlStatus.textContent = 'Não consegui extrair texto desse arquivo.';
@@ -1205,7 +1232,7 @@
           return;
         }
         // limite de segurança pra não mandar um texto gigante sem necessidade
-        anHtmlText = text.slice(0, 40000);
+        anHtmlText = text.slice(0, 45000);
         anHtmlFileName = file.name;
         anHtmlStatus.style.color = 'var(--safe)';
         anHtmlStatus.textContent = `✓ ${file.name} carregado (${anHtmlText.length.toLocaleString('pt-BR')} caracteres extraídos)`;
@@ -1258,6 +1285,8 @@
   });
 
   const AN_PROMPT = `Você está analisando estatísticas de times de um site de análise esportiva (tipo Tip Score) — pode vir como print (imagem) e/ou como texto extraído direto da página, dependendo do que foi enviado. Eles costumam mostrar médias de mercados como gols, xG, finalizações, escanteios, faltas, cartões etc, separadas por mandante/visitante e por período (últimos 5 ou 10 jogos, por exemplo). Quando vier texto extraído da página, ele tende a ser mais completo e confiável que print (inclui jogo a jogo, CV, etc) — priorize esses dados quando disponíveis. Se houver mais de uma fonte, considere todas juntas antes de decidir.
+
+SOBRE O TEXTO EXTRAÍDO DA PÁGINA: trechos entre ** ** (ex: **6.6**) estavam em negrito/destaque na página original — isso preserva uma informação visual importante. Em células com números empilhados (ex: "10.8 **6.6** 4.2"), o padrão observado é: o número do meio em negrito é o valor específico de UM time (o time em foco/mandante), enquanto os números menores ao redor costumam ser o total combinado dos dois times e/ou o valor do adversário (repare que muitas vezes os dois menores somados batem com o maior — isso confirma que o maior é o total, não a média de um time só). NUNCA trate o número "total combinado dos dois times" como se fosse a média de um único time — isso infla a análise. Use o contexto (nomes dos times, cabeçalhos de coluna) pra confirmar o que cada número representa antes de decidir.
 
 IMPORTANTE: antes de escolher, avalie TODOS os mercados visíveis nos prints (não escolha escanteios ou qualquer outro por hábito). Para cada mercado presente, compare a consistência entre os números dos dois times (ex: desvio, outliers, volume de jogos). Só depois disso escolha o de MELHOR valor — pode ser qualquer um deles, o critério é qual tem a combinação mais forte de consistência + margem, não uma preferência fixa por um tipo de mercado.
 
