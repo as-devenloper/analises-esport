@@ -112,7 +112,7 @@
     color:var(--text-dim);
     margin-bottom:6px;
   }
-  .field input, .field select{
+  .field input, .field select, .field textarea{
     width:100%;
     background:var(--surface-2);
     border:1px solid var(--border);
@@ -122,8 +122,14 @@
     font-family:var(--font-head);
     font-size:14px;
   }
+  .field textarea{
+    font-family:var(--font-mono);
+    font-size:12.5px;
+    line-height:1.5;
+    resize:vertical;
+  }
   .field input[type="number"]{font-family:var(--font-mono);}
-  .field input:focus, .field select:focus{
+  .field input:focus, .field select:focus, .field textarea:focus{
     outline:none;
     border-color:var(--accent);
   }
@@ -472,13 +478,13 @@
 
   <div id="view-analises">
     <section class="panel">
-      <h2>Análises com IA</h2>
-      <p class="sub">Sem backend, sem chave de API, sem login — é só levar o print pro Duck.ai.</p>
+      <h2>Análises com o Claude</h2>
+      <p class="sub">É só levar o print (e os dados, se quiser) pra uma conversa com o Claude. Precisa estar logado na sua conta.</p>
 
       <ol class="an-steps">
         <li>Tire um print das médias no Tip Score (ou outro site de análise).</li>
-        <li>Clique em "Copiar prompt" abaixo.</li>
-        <li>Clique em "Abrir conversa no Duck.ai" — abre uma aba nova, sem precisar de login.</li>
+        <li>Clique em "Copiar prompt".</li>
+        <li>Clique em "Abrir conversa com o Claude" — abre uma aba nova.</li>
         <li>Cole o prompt, anexe o print e envie.</li>
       </ol>
 
@@ -490,7 +496,7 @@
 
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;">
         <button type="button" class="ghost" id="an-copy" style="width:auto;padding:10px 18px;">Copiar prompt</button>
-        <button type="button" class="primary" id="an-open" style="width:auto;padding:10px 18px;">Abrir conversa no Duck.ai</button>
+        <button type="button" class="primary" id="an-open" style="width:auto;padding:10px 18px;">Abrir conversa com o Claude</button>
       </div>
       <span id="an-copy-status" style="font-size:12.5px;color:var(--safe);margin-top:8px;display:block;"></span>
     </section>
@@ -955,6 +961,7 @@ Se algum dado estiver ilegível ou faltando, avise isso em vez de inventar núme
     const status = document.getElementById('an-copy-status');
     try{
       await navigator.clipboard.writeText(AN_PROMPT);
+      status.style.color = 'var(--safe)';
       status.textContent = 'Prompt copiado! Agora é só colar na conversa com o Claude.';
     } catch(err){
       status.style.color = 'var(--warn)';
@@ -963,7 +970,7 @@ Se algum dado estiver ilegível ou faltando, avise isso em vez de inventar núme
   });
 
   document.getElementById('an-open').addEventListener('click', () => {
-    window.open('https://duck.ai', '_blank');
+    window.open('https://claude.ai/new', '_blank');
   });
 </script>
 </body>
