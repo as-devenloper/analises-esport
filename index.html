@@ -1304,12 +1304,15 @@ Seja objetivo em todos os campos de texto — respostas longas correm risco de s
         parsed = extractAiJson(textBlock);
         if(!parsed) throw new Error('Sem JSON reconhecível');
       } catch(parseErr){
-        console.error('Não deu pra interpretar a resposta:', textBlock, parseErr);
+        console.error('Não deu pra interpretar a resposta:', textBlock, parseErr, data);
+        const debugInfo = textBlock.trim()
+          ? textBlock
+          : `(texto vazio — resposta completa da API abaixo)\n\n${JSON.stringify(data, null, 2)}`;
         anResult.innerHTML = `
           <div class="empty-state">A IA respondeu, mas em um formato que não consegui ler.</div>
           <div class="an-raw-response">
             <span class="an-alertas-title">Resposta bruta (copie e me mande se precisar de ajuda)</span>
-            <pre>${escapeHtml(textBlock)}</pre>
+            <pre>${escapeHtml(debugInfo)}</pre>
           </div>
         `;
         return;
