@@ -463,34 +463,24 @@
   .movement-row:last-child{border-bottom:none;}
   .movement-row .icon-btn{margin-left:auto;font-family:var(--font-head);}
 
-  /* ---------- Análises (IA) ---------- */
-  #an-preview{margin-top:10px;}
-  #an-preview img{
-    max-width:100%;
-    border-radius:8px;
-    border:1px solid var(--border);
-    display:block;
-  }
-  .an-justificativa{
+  /* ---------- Análises ---------- */
+  .an-steps{
+    margin:0 0 16px;
+    padding-left:20px;
     font-size:13.5px;
     color:var(--text-dim);
-    line-height:1.6;
-    margin:0;
+    line-height:1.8;
   }
-  .an-alertas{
-    margin:14px 0 0;
-    padding-left:18px;
+  .an-prompt-box{
+    background:var(--surface-2);
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:14px 16px;
+    font-family:var(--font-mono);
     font-size:12.5px;
     color:var(--text-dim);
-  }
-  .an-alertas li{margin-bottom:4px;}
-  .an-alertas-title{
-    display:block;
-    font-size:11px;
-    text-transform:uppercase;
-    letter-spacing:0.04em;
-    color:var(--text-faint);
-    margin-top:16px;
+    line-height:1.6;
+    white-space:pre-wrap;
   }
 
   footer.note{
@@ -680,29 +670,25 @@
     <div id="ganhos-container"></div>
   </section>
 
-  <div class="grid" id="view-analises" style="display:none;">
+  <div id="view-analises" style="display:none;">
     <section class="panel">
-      <h2>Enviar print</h2>
-      <p class="sub">Envie um print das médias do Tip Score (ou outro site de análise). A IA sugere a melhor entrada de valor, considerando odd mínima de 1.50.</p>
+      <h2>Análises com o Claude</h2>
+      <p class="sub">Sem backend, sem chave de API — é só levar o print pra uma conversa com o Claude.</p>
 
-      <div class="field">
-        <label for="an-file">Imagem do print</label>
-        <input type="file" id="an-file" accept="image/*">
+      <ol class="an-steps">
+        <li>Tire um print das médias no Tip Score (ou outro site de análise).</li>
+        <li>Clique em "Copiar prompt" abaixo.</li>
+        <li>Clique em "Abrir conversa com o Claude" — abre uma aba nova.</li>
+        <li>Cole o prompt, anexe o print e envie.</li>
+      </ol>
+
+      <div class="an-prompt-box" id="an-prompt-box"></div>
+
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;">
+        <button type="button" class="ghost" id="an-copy" style="width:auto;padding:10px 18px;">Copiar prompt</button>
+        <button type="button" class="primary" id="an-open" style="width:auto;padding:10px 18px;">Abrir conversa com o Claude</button>
       </div>
-
-      <div id="an-preview" style="display:none;">
-        <img id="an-preview-img" alt="Prévia do print enviado">
-      </div>
-
-      <button type="button" class="primary" id="an-analyze" style="margin-top:16px;" disabled>Analisar com IA</button>
-    </section>
-
-    <section class="panel">
-      <h2>Sugestão da IA</h2>
-      <p class="sub">Sugestão gerada a partir do print, sempre com odd mínima de 1.50.</p>
-      <div id="an-result">
-        <div class="empty-state">Envie um print e clique em "Analisar com IA" pra ver a sugestão aqui.</div>
-      </div>
+      <span id="an-copy-status" style="font-size:12.5px;color:var(--safe);margin-top:8px;display:block;"></span>
     </section>
   </div>
 
@@ -990,7 +976,7 @@
     document.getElementById('view-entradas').style.display = view === 'entradas' ? 'block' : 'none';
     document.getElementById('view-calculadora').style.display = view === 'calculadora' ? 'grid' : 'none';
     document.getElementById('view-ganhos').style.display = view === 'ganhos' ? 'block' : 'none';
-    document.getElementById('view-analises').style.display = view === 'analises' ? 'grid' : 'none';
+    document.getElementById('view-analises').style.display = view === 'analises' ? 'block' : 'none';
     if(view === 'ganhos') renderGanhos();
   });
 
@@ -1252,103 +1238,31 @@
   }
 
   // ---------------------------------------------------------------
-  // Análises — envia o print pra IA e mostra a sugestão de entrada
+  // Análises — sem backend: monta um prompt pronto e leva pra uma
+  // conversa nova com o Claude, onde você mesmo anexa o print.
   // ---------------------------------------------------------------
-  const anFile = document.getElementById('an-file');
-  const anPreview = document.getElementById('an-preview');
-  const anPreviewImg = document.getElementById('an-preview-img');
-  const anAnalyzeBtn = document.getElementById('an-analyze');
-  const anResult = document.getElementById('an-result');
+  const AN_PROMPT = `Vou te mandar um ou mais prints de estatísticas de um time, tirados de um site de análise esportiva (Tip Score). Eles mostram médias de mercados como cartões, escanteios, gols, finalizações, faltas etc, separadas por mandante/visitante e por período (últimos 5 ou 10 jogos, por exemplo).
 
-  let anImageBase64 = null;
-  let anImageMediaType = null;
+Analise os números e sugira a MELHOR entrada de valor, considerando que a odd mínima aceitável é 1.50 — não sugira um mercado cuja odd típica costuma ficar abaixo disso.
 
-  anFile.addEventListener('change', () => {
-    const file = anFile.files[0];
-    if(!file){
-      anAnalyzeBtn.disabled = true;
-      anPreview.style.display = 'none';
-      anImageBase64 = null;
-      return;
-    }
-    anImageMediaType = file.type || 'image/png';
-    const reader = new FileReader();
-    reader.onload = () => {
-      anImageBase64 = reader.result.split(',')[1];
-      anPreviewImg.src = reader.result;
-      anPreview.style.display = 'block';
-      anAnalyzeBtn.disabled = false;
-    };
-    reader.readAsDataURL(file);
-  });
+Me responda com: time, mercado, linha sugerida, média observada, odd mínima recomendada (>= 1.50) e uma justificativa curta citando os números que você viu no print. Se faltar algum dado legível, me avise.`;
 
-  const AN_PROMPT = `Você está analisando um print de estatísticas de um time, tirado de um site de análise esportiva (tipo Tip Score). Ele costuma mostrar médias de mercados como cartões, escanteios, gols, finalizações, faltas etc, separadas por mandante/visitante e por período (últimos 5 ou 10 jogos, por exemplo).
+  document.getElementById('an-prompt-box').textContent = AN_PROMPT;
 
-Sua tarefa: sugerir a MELHOR entrada de valor com base nesses números, considerando que a odd mínima aceitável é 1.50 — nunca sugira um mercado cuja odd típica costuma ficar abaixo disso.
-
-Responda APENAS com um objeto JSON, sem markdown, sem texto antes ou depois, exatamente neste formato:
-{"time": "...", "mercado": "...", "linha_sugerida": "...", "media_observada": "...", "odd_minima": "1.50", "justificativa": "...", "alertas": ["...", "..."]}
-
-Se a imagem não tiver dados suficientes ou legíveis pra uma sugestão confiável, responda com {"erro": "motivo em uma frase"} em vez do formato acima.`;
-
-  anAnalyzeBtn.addEventListener('click', async () => {
-    if(!anImageBase64) return;
-    anAnalyzeBtn.disabled = true;
-    anAnalyzeBtn.textContent = 'Analisando…';
-    anResult.innerHTML = `<div class="empty-state">Analisando o print…</div>`;
-
+  document.getElementById('an-copy').addEventListener('click', async () => {
+    const status = document.getElementById('an-copy-status');
     try{
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-6',
-          max_tokens: 1000,
-          messages: [
-            {
-              role: 'user',
-              content: [
-                { type: 'image', source: { type: 'base64', media_type: anImageMediaType, data: anImageBase64 } },
-                { type: 'text', text: AN_PROMPT }
-              ]
-            }
-          ]
-        })
-      });
-      const data = await response.json();
-      const textBlock = (data.content || []).map(c => c.type === 'text' ? c.text : '').join('\n');
-      const clean = textBlock.replace(/```json|```/g, '').trim();
-      const parsed = JSON.parse(clean);
-      renderAnalise(parsed);
+      await navigator.clipboard.writeText(AN_PROMPT);
+      status.textContent = 'Prompt copiado! Agora é só colar na conversa com o Claude.';
     } catch(err){
-      console.error(err);
-      anResult.innerHTML = `<div class="empty-state">Não foi possível analisar o print agora. Tente de novo em instantes.</div>`;
-    } finally {
-      anAnalyzeBtn.disabled = false;
-      anAnalyzeBtn.textContent = 'Analisar com IA';
+      status.style.color = 'var(--warn)';
+      status.textContent = 'Não consegui copiar automaticamente — selecione o texto acima e copie manualmente.';
     }
   });
 
-  function renderAnalise(p){
-    if(p.erro){
-      anResult.innerHTML = `<div class="empty-state">${escapeHtml(p.erro)}</div>`;
-      return;
-    }
-    const alertasHtml = (p.alertas && p.alertas.length)
-      ? `<span class="an-alertas-title">Pontos de atenção</span><ul class="an-alertas">${p.alertas.map(a => `<li>${escapeHtml(a)}</li>`).join('')}</ul>`
-      : '';
-    anResult.innerHTML = `
-      <div class="profit-summary" style="margin-bottom:16px;">
-        <div class="profit-card"><span class="num">${escapeHtml(p.time || '—')}</span><span class="label">time</span></div>
-        <div class="profit-card"><span class="num">${escapeHtml(p.mercado || '—')}</span><span class="label">mercado</span></div>
-        <div class="profit-card"><span class="num">${escapeHtml(p.linha_sugerida || '—')}</span><span class="label">linha sugerida</span></div>
-        <div class="profit-card"><span class="num safe">${escapeHtml(p.media_observada || '—')}</span><span class="label">média observada</span></div>
-        <div class="profit-card"><span class="num safe">${escapeHtml(p.odd_minima || '1.50')}</span><span class="label">odd mínima</span></div>
-      </div>
-      <p class="an-justificativa">${escapeHtml(p.justificativa || '')}</p>
-      ${alertasHtml}
-    `;
-  }
+  document.getElementById('an-open').addEventListener('click', () => {
+    window.open('https://claude.ai/new', '_blank');
+  });
 
   render();
 </script>
