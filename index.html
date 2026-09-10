@@ -567,20 +567,38 @@
   .result-btn.red:hover{background:var(--warn-bg);}
   .badge.clickable{cursor:pointer;}
 
+  .an-saved-item{border-bottom:1px solid var(--border);position:relative;}
+  .an-saved-item:last-child{border-bottom:none;}
   .an-saved-row{
     display:flex;
-    justify-content:space-between;
-    align-items:center;
-    gap:14px;
-    padding:14px;
-    border-bottom:1px solid var(--border);
-    flex-wrap:wrap;
+    width:100%;
+    text-align:left;
+    background:transparent;
+    border:none;
+    color:inherit;
+    font-family:inherit;
+    cursor:pointer;
+    padding:14px 110px 14px 14px;
   }
-  .an-saved-row:last-child{border-bottom:none;}
+  .an-saved-row:hover{background:var(--surface-2);}
   .an-saved-info{min-width:0;flex:1;}
   .an-saved-info .name{font-weight:600;font-size:14px;}
   .an-saved-info .meta{font-size:11.5px;color:var(--text-dim);margin-top:2px;line-height:1.4;}
-  .an-saved-actions{display:flex;align-items:center;gap:10px;}
+  .an-saved-toolbar{
+    position:absolute;
+    top:12px;
+    right:14px;
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .an-saved-detail{
+    padding:0 14px 16px 30px;
+  }
+  @media (max-width:560px){
+    .an-saved-row{padding:14px;}
+    .an-saved-toolbar{position:static;padding:0 14px 12px;justify-content:flex-end;}
+  }
 
   footer.note{
     margin-top:20px;
@@ -1133,9 +1151,9 @@ IMPORTANTE: antes de escolher, avalie TODOS os mercados visíveis nos prints (n�
 Sua tarefa: sugerir a MELHOR entrada de valor com base nesses números, considerando que a odd mínima aceitável é 1.50 — nunca sugira um mercado cuja odd típica costuma ficar abaixo disso.
 
 Responda APENAS com um objeto JSON, sem markdown, sem texto antes ou depois, exatamente neste formato:
-{"time": "...", "mercado": "...", "linha_sugerida": "...", "media_observada": "...", "odd_minima": "1.50", "justificativa": "...", "mercados_avaliados": ["lista de TODOS os mercados que você viu e considerou nos prints, ex: Gols, xG, Finalizações, Escanteios, Faltas, Cartões"], "alertas": ["...", "..."]}
+{"time": "...", "mercado": "...", "linha_sugerida": "...", "media_observada": "...", "odd_minima": "1.50", "justificativa": "no máximo 3 frases, direto ao ponto", "mercados_avaliados": ["lista curta de TODOS os mercados que você viu e considerou, ex: Gols, xG, Finalizações, Escanteios, Faltas, Cartões"], "alertas": ["no máximo 3 itens, cada um em uma frase curta"]}
 
-Se as imagens não tiverem dados suficientes ou legíveis pra uma sugestão confiável, responda com {"erro": "motivo em uma frase"} em vez do formato acima.`;
+Seja objetivo em todos os campos de texto — respostas longas correm risco de ser cortadas antes de terminar o JSON. Se as imagens não tiverem dados suficientes ou legíveis pra uma sugestão confiável, responda com {"erro": "motivo em uma frase"} em vez do formato acima.`;
 
   anAnalyzeBtn.addEventListener('click', async () => {
     if(anImages.length === 0) return;
@@ -1296,6 +1314,13 @@ Se as imagens não tiverem dados suficientes ou legíveis pra uma sugestão conf
     }
   }
 
+  let expandedAnaliseId = null;
+
+  function toggleAnaliseDetail(id){
+    expandedAnaliseId = (expandedAnaliseId === id) ? null : id;
+    renderAnalisesSalvas();
+  }
+
   function renderAnalisesSalvas(){
     const container = document.getElementById('an-saved-container');
     if(analisesAll.length === 0){
@@ -1315,16 +1340,36 @@ Se as imagens não tiverem dados suficientes ou legíveis pra uma sugestão conf
         const badge = resultadoBadge(resultado);
         resultadoHtml = `<span class="badge ${badge.cls} clickable" title="Clique para voltar a pendente" onclick="markAnaliseResult('${a.id}','pendente')">${badge.label}</span>`;
       }
+      const isOpen = expandedAnaliseId === a.id;
       const oddInfo = a.oddVista != null ? ` · odd vista ${Number(a.oddVista).toFixed(2)}${a.temValor === false ? ' (sem valor)' : ''}` : '';
+
+      const mercadosHtml = (a.mercados_avaliados && a.mercados_avaliados.length)
+        ? `<div class="an-mercados-avaliados"><span class="an-alertas-title">Mercados avaliados</span>${a.mercados_avaliados.map(m => `<span class="an-mercado-chip">${escapeHtml(m)}</span>`).join('')}</div>`
+        : '';
+      const alertasHtml = (a.alertas && a.alertas.length)
+        ? `<span class="an-alertas-title">Pontos de atenção</span><ul class="an-alertas">${a.alertas.map(al => `<li>${escapeHtml(al)}</li>`).join('')}</ul>`
+        : '';
+
       return `
-        <div class="an-saved-row">
-          <div class="an-saved-info">
-            <div class="name">${escapeHtml(a.time || '—')} · ${escapeHtml(a.mercado || '—')}</div>
-            <div class="meta">Linha ${escapeHtml(a.linha_sugerida || '—')} · odd mínima ${escapeHtml(a.odd_minima || '1.50')}${oddInfo}</div>
-          </div>
-          <div class="an-saved-actions">
+        <div class="an-saved-item">
+          <button type="button" class="an-saved-row" onclick="toggleAnaliseDetail('${a.id}')">
+            <div class="an-saved-info">
+              <div class="name">${isOpen ? '▾' : '▸'} ${escapeHtml(a.time || '—')} · ${escapeHtml(a.mercado || '—')}</div>
+              <div class="meta">Linha ${escapeHtml(a.linha_sugerida || '—')}${oddInfo}</div>
+            </div>
+          </button>
+          <div class="an-saved-toolbar">
             ${resultadoHtml}
             <button class="icon-btn" title="Excluir" onclick="deleteAnalise('${a.id}')">✕</button>
+          </div>
+          <div class="an-saved-detail" style="display:${isOpen ? 'block' : 'none'};">
+            <div class="an-suggestion-stats" style="margin-bottom:12px;">
+              <div class="stat-chip"><span class="stat-chip-label">Média observada</span><span class="stat-chip-value safe">${escapeHtml(a.media_observada || '—')}</span></div>
+              <div class="stat-chip"><span class="stat-chip-label">Odd mínima</span><span class="stat-chip-value safe">${escapeHtml(a.odd_minima || '1.50')}</span></div>
+            </div>
+            ${a.justificativa ? `<p class="an-justificativa">${escapeHtml(a.justificativa)}</p>` : ''}
+            ${mercadosHtml}
+            ${alertasHtml}
           </div>
         </div>
       `;
