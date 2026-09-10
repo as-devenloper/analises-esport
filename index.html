@@ -472,13 +472,13 @@
 
   <div id="view-analises">
     <section class="panel">
-      <h2>Análises com o Claude</h2>
-      <p class="sub">Sem backend, sem chave de API — é só levar o print pra uma conversa com o Claude.</p>
+      <h2>Análises com IA</h2>
+      <p class="sub">Sem backend, sem chave de API, sem login — é só levar o print pro Duck.ai.</p>
 
       <ol class="an-steps">
         <li>Tire um print das médias no Tip Score (ou outro site de análise).</li>
         <li>Clique em "Copiar prompt" abaixo.</li>
-        <li>Clique em "Abrir conversa com o Claude" — abre uma aba nova.</li>
+        <li>Clique em "Abrir conversa no Duck.ai" — abre uma aba nova, sem precisar de login.</li>
         <li>Cole o prompt, anexe o print e envie.</li>
       </ol>
 
@@ -490,7 +490,7 @@
 
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;">
         <button type="button" class="ghost" id="an-copy" style="width:auto;padding:10px 18px;">Copiar prompt</button>
-        <button type="button" class="primary" id="an-open" style="width:auto;padding:10px 18px;">Abrir conversa com o Claude</button>
+        <button type="button" class="primary" id="an-open" style="width:auto;padding:10px 18px;">Abrir conversa no Duck.ai</button>
       </div>
       <span id="an-copy-status" style="font-size:12.5px;color:var(--safe);margin-top:8px;display:block;"></span>
     </section>
@@ -963,7 +963,7 @@ Se algum dado estiver ilegível ou faltando, avise isso em vez de inventar núme
   });
 
   document.getElementById('an-open').addEventListener('click', () => {
-    window.open('https://claude.ai/new', '_blank');
+    window.open('https://duck.ai', '_blank');
   });
 </script>
 </body>
