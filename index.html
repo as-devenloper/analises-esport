@@ -510,11 +510,11 @@
         <div class="row-2">
           <div class="field">
             <label for="c-odd">Odd</label>
-            <input type="number" id="c-odd" step="0.01" min="1.01" placeholder="1.85" required>
+            <input type="text" inputmode="decimal" id="c-odd" placeholder="1,85" required>
           </div>
           <div class="field">
             <label for="c-valor">Valor apostado (R$)</label>
-            <input type="number" id="c-valor" step="0.01" min="0" placeholder="50.00" required>
+            <input type="text" inputmode="decimal" id="c-valor" placeholder="50,00" required>
           </div>
         </div>
 
@@ -529,7 +529,7 @@
 
         <div class="field" id="c-cashout-field" style="display:none;">
           <label for="c-cashout-valor">Valor recebido no cashout (R$)</label>
-          <input type="number" id="c-cashout-valor" step="0.01" min="0" placeholder="30.00">
+          <input type="text" inputmode="decimal" id="c-cashout-valor" placeholder="30,00">
         </div>
 
         <button type="submit" class="primary">Adicionar</button>
@@ -634,6 +634,28 @@
   const calcResultadoGroup = document.getElementById('c-resultado-group');
   const calcContainer = document.getElementById('calc-container');
 
+  // Máscara tipo "valor monetário": você só digita números e a
+  // vírgula decimal vai se ajustando sozinha, sem precisar digitar
+  // vírgula ou ponto.
+  function maskDecimalInput(el){
+    el.addEventListener('input', () => {
+      let digits = el.value.replace(/\D/g, '');
+      digits = digits.replace(/^0+(?=\d)/, '');
+      if(digits === ''){ el.value = ''; return; }
+      while(digits.length < 3) digits = '0' + digits;
+      const intPart = digits.slice(0, -2);
+      const decPart = digits.slice(-2);
+      el.value = parseInt(intPart, 10) + ',' + decPart;
+    });
+  }
+  ['c-odd', 'c-valor', 'c-cashout-valor'].forEach(id => maskDecimalInput(document.getElementById(id)));
+
+  function parseMasked(id){
+    const val = document.getElementById(id).value;
+    if(!val) return NaN;
+    return parseFloat(val.replace(',', '.'));
+  }
+
   calcResultadoGroup.addEventListener('click', (e) => {
     const btn = e.target.closest('button');
     if(!btn) return;
@@ -666,13 +688,22 @@
   calcForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const dataStr = document.getElementById('c-data').value;
-    const odd = parseFloat(document.getElementById('c-odd').value);
-    const valor = parseFloat(document.getElementById('c-valor').value);
+    const odd = parseMasked('c-odd');
+    const valor = parseMasked('c-valor');
     const resultado = calcResultadoVal;
+
+    if(isNaN(odd) || odd < 1.01){
+      alert('Informe uma odd válida (mínimo 1,01).');
+      return;
+    }
+    if(isNaN(valor) || valor <= 0){
+      alert('Informe o valor apostado.');
+      return;
+    }
 
     let cashoutValor = null;
     if(resultado === 'cashout'){
-      cashoutValor = parseFloat(document.getElementById('c-cashout-valor').value);
+      cashoutValor = parseMasked('c-cashout-valor');
       if(isNaN(cashoutValor)){
         alert('Informe o valor recebido no cashout.');
         return;
