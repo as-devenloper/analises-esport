@@ -1241,11 +1241,29 @@
   // Análises — sem backend: monta um prompt pronto e leva pra uma
   // conversa nova com o Claude, onde você mesmo anexa o print.
   // ---------------------------------------------------------------
-  const AN_PROMPT = `Vou te mandar um ou mais prints de estatísticas de um time, tirados de um site de análise esportiva (Tip Score). Eles mostram médias de mercados como cartões, escanteios, gols, finalizações, faltas etc, separadas por mandante/visitante e por período (últimos 5 ou 10 jogos, por exemplo).
+  const AN_PROMPT = `Vou te mandar um ou mais prints de estatísticas de times, tirados de um site de análise esportiva (Tip Score). Eles mostram médias de mercados como gols, xG, finalizações, escanteios, faltas, cartões etc, geralmente separadas por mandante/visitante e por período (últimos 5 ou 10 jogos, por exemplo).
 
-Analise os números e sugira a MELHOR entrada de valor, considerando que a odd mínima aceitável é 1.50 — não sugira um mercado cuja odd típica costuma ficar abaixo disso.
+Analise os números e monta a resposta EXATAMENTE nesse formato:
 
-Me responda com: time, mercado, linha sugerida, média observada, odd mínima recomendada (>= 1.50) e uma justificativa curta citando os números que você viu no print. Se faltar algum dado legível, me avise.`;
+Analisei os dois painéis ([time casa] em casa / [time fora] fora, últimos [N]).
+
+## Leitura rápida dos números
+
+Uma tabela markdown com colunas: Indicador | [Time A] (casa) | [Time B] (fora), listando todos os indicadores que aparecem nos prints.
+
+Minha entrada única: [mercado e linha sugeridos]
+
+Por quê: explique o raciocínio citando os números específicos que você viu nos prints (médias, consistência entre os dois lados, volume que sustenta a linha, qualquer fator de contexto relevante como arbitragem, confrontos diretos etc).
+
+Confiança: [nota]/10
+
+Stake sugerida: [X] unidade(s), com odd a partir de [Y] já tem valor — nunca sugira ou aceite odd abaixo de 1.50, mesmo que o valor pareça bom; se a odd mínima de valor for menor que 1.50, diga isso explicitamente em vez de recomendar a entrada.
+
+O que eu descartaria: outros mercados que aparecem nos números mas não têm valor claro, e por quê.
+
+Termine perguntando qual odd estou vendo, pra confirmar se o valor se mantém.
+
+Se algum dado estiver ilegível ou faltando, avise isso em vez de inventar números.`;
 
   document.getElementById('an-prompt-box').textContent = AN_PROMPT;
 
