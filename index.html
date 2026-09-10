@@ -519,6 +519,17 @@
     color:var(--text-faint);
     margin-top:16px;
   }
+  .an-mercados-avaliados{margin-top:16px;}
+  .an-mercado-chip{
+    display:inline-block;
+    background:var(--surface-2);
+    border:1px solid var(--border);
+    color:var(--text-dim);
+    font-size:11.5px;
+    padding:4px 10px;
+    border-radius:20px;
+    margin:6px 6px 0 0;
+  }
   .an-check-box{
     margin-top:18px;
     padding-top:16px;
@@ -1117,10 +1128,12 @@
 
   const AN_PROMPT = `Você está analisando um ou mais prints de estatísticas de times, tirados de um site de análise esportiva (tipo Tip Score). Eles costumam mostrar médias de mercados como gols, xG, finalizações, escanteios, faltas, cartões etc, separadas por mandante/visitante e por período (últimos 5 ou 10 jogos, por exemplo). Se houver mais de um print, considere todos juntos antes de decidir.
 
+IMPORTANTE: antes de escolher, avalie TODOS os mercados visíveis nos prints (não escolha escanteios ou qualquer outro por hábito). Para cada mercado presente, compare a consistência entre os números dos dois times (ex: desvio, outliers, volume de jogos). Só depois disso escolha o de MELHOR valor — pode ser qualquer um deles, o critério é qual tem a combinação mais forte de consistência + margem, não uma preferência fixa por um tipo de mercado.
+
 Sua tarefa: sugerir a MELHOR entrada de valor com base nesses números, considerando que a odd mínima aceitável é 1.50 — nunca sugira um mercado cuja odd típica costuma ficar abaixo disso.
 
 Responda APENAS com um objeto JSON, sem markdown, sem texto antes ou depois, exatamente neste formato:
-{"time": "...", "mercado": "...", "linha_sugerida": "...", "media_observada": "...", "odd_minima": "1.50", "justificativa": "...", "alertas": ["...", "..."]}
+{"time": "...", "mercado": "...", "linha_sugerida": "...", "media_observada": "...", "odd_minima": "1.50", "justificativa": "...", "mercados_avaliados": ["lista de TODOS os mercados que você viu e considerou nos prints, ex: Gols, xG, Finalizações, Escanteios, Faltas, Cartões"], "alertas": ["...", "..."]}
 
 Se as imagens não tiverem dados suficientes ou legíveis pra uma sugestão confiável, responda com {"erro": "motivo em uma frase"} em vez do formato acima.`;
 
@@ -1186,6 +1199,7 @@ Se as imagens não tiverem dados suficientes ou legíveis pra uma sugestão conf
         media_observada: p.media_observada || null,
         odd_minima: p.odd_minima || '1.50',
         justificativa: p.justificativa || null,
+        mercados_avaliados: p.mercados_avaliados || [],
         alertas: p.alertas || [],
         resultado: 'pendente',
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -1204,6 +1218,9 @@ Se as imagens não tiverem dados suficientes ou legíveis pra uma sugestão conf
     const alertasHtml = (p.alertas && p.alertas.length)
       ? `<span class="an-alertas-title">Pontos de atenção</span><ul class="an-alertas">${p.alertas.map(a => `<li>${escapeHtml(a)}</li>`).join('')}</ul>`
       : '';
+    const mercadosHtml = (p.mercados_avaliados && p.mercados_avaliados.length)
+      ? `<div class="an-mercados-avaliados"><span class="an-alertas-title">Mercados avaliados</span>${p.mercados_avaliados.map(m => `<span class="an-mercado-chip">${escapeHtml(m)}</span>`).join('')}</div>`
+      : '';
     anResult.innerHTML = `
       <div class="an-suggestion-top">
         <div>
@@ -1219,6 +1236,7 @@ Se as imagens não tiverem dados suficientes ou legíveis pra uma sugestão conf
       </div>
 
       <p class="an-justificativa">${escapeHtml(p.justificativa || '')}</p>
+      ${mercadosHtml}
       ${alertasHtml}
 
       <div class="an-check-box">
