@@ -876,6 +876,18 @@
     return { cls: '', label: resultado };
   }
 
+  // Extrai o JSON de uma resposta de texto da IA, tolerando texto extra
+  // ao redor e quebras de linha cruas dentro dos valores (inválidas em JSON).
+  function extractAiJson(textBlock){
+    const clean = textBlock.replace(/```json|```/g, '').trim();
+    const match = clean.match(/\{[\s\S]*\}/);
+    if(!match) return null;
+    // troca quebras de linha/tabs cru dentro do JSON por espaço —
+    // a estrutura do JSON não depende delas, só quebrava o parse
+    const sanitized = match[0].replace(/[\r\n\t]+/g, ' ');
+    return JSON.parse(sanitized);
+  }
+
   function formatBRL(n){
     return 'R$ ' + n.toFixed(2).replace('.', ',');
   }
@@ -1178,7 +1190,7 @@ MOMENTO REAL DOS TIMES: não fique só na média fria. Se o print mostrar dados 
 Responda APENAS com um objeto JSON, sem markdown, sem texto antes ou depois, exatamente neste formato:
 {"time": "...", "mercado": "...", "linha_sugerida": "...", "media_observada": "...", "odd_valor": "odd calculada a partir da probabilidade estimada, ex: 1.65", "probabilidade_estimada": "ex: 78%", "justificativa": "no máximo 4 frases, direto ao ponto, incluindo como chegou nessa probabilidade e o momento real dos times (tendência recente ou aviso de que só há média consolidada)", "mercados_avaliados": ["lista curta de TODOS os mercados que você viu e considerou, ex: Gols, xG, Finalizações, Escanteios, Faltas, Cartões"], "alertas": ["no máximo 3 itens, cada um em uma frase curta"]}
 
-Seja objetivo em todos os campos de texto — respostas longas correm risco de ser cortadas antes de terminar o JSON. Se nenhum mercado passar do piso de 1.50 de odd de valor, ou se as imagens não tiverem dados suficientes ou legíveis pra uma sugestão confiável, responda com {"erro": "motivo em uma frase"} em vez do formato acima.`;
+Seja objetivo em todos os campos de texto — respostas longas correm risco de ser cortadas antes de terminar o JSON. O JSON precisa ser válido: tudo em uma linha só, sem quebra de linha dentro dos textos (troque por espaço ou vírgula). Se nenhum mercado passar do piso de 1.50 de odd de valor, ou se as imagens não tiverem dados suficientes ou legíveis pra uma sugestão confiável, responda com {"erro": "motivo em uma frase"} em vez do formato acima.`;
 
   anAnalyzeBtn.addEventListener('click', async () => {
     if(anImages.length === 0) return;
@@ -1205,20 +1217,13 @@ Seja objetivo em todos os campos de texto — respostas longas correm risco de s
         return;
       }
       const textBlock = (data.content || []).map(c => c.type === 'text' ? c.text : '').join('\n');
-      const clean = textBlock.replace(/```json|```/g, '').trim();
-      // procura o primeiro { até o último } — tolera texto extra antes/depois do JSON
-      const match = clean.match(/\{[\s\S]*\}/);
-      if(!match){
-        console.error('Resposta sem JSON reconhecível:', textBlock);
-        anResult.innerHTML = `<div class="empty-state">A IA respondeu, mas em um formato que não consegui ler. Tente novamente — se persistir, tente com menos prints por vez.</div>`;
-        return;
-      }
       let parsed;
       try{
-        parsed = JSON.parse(match[0]);
+        parsed = extractAiJson(textBlock);
+        if(!parsed) throw new Error('Sem JSON reconhecível');
       } catch(parseErr){
-        console.error('JSON inválido (provavelmente cortado):', textBlock);
-        anResult.innerHTML = `<div class="empty-state">A resposta da IA veio incompleta (provavelmente cortada). A chamada já foi processada — tente novamente com menos prints de uma vez.</div>`;
+        console.error('Não deu pra interpretar a resposta:', textBlock, parseErr);
+        anResult.innerHTML = `<div class="empty-state">A IA respondeu, mas em um formato que não consegui ler. Tente novamente — se persistir, tente com menos prints por vez.</div>`;
         return;
       }
       renderAnalise(parsed);
@@ -1403,10 +1408,8 @@ Se não conseguir ler a odd ou os mercados no print, responda com {"erro": "moti
           return;
         }
         const textBlock = (data.content || []).map(c => c.type === 'text' ? c.text : '').join('\n');
-        const clean = textBlock.replace(/```json|```/g, '').trim();
-        const match = clean.match(/\{[\s\S]*\}/);
-        if(!match) throw new Error('Sem JSON reconhecível');
-        const result = JSON.parse(match[0]);
+        const result = extractAiJson(textBlock);
+        if(!result) throw new Error('Sem JSON reconhecível');
 
         if(result.erro){
           checkFileResult.style.color = 'var(--warn)';
