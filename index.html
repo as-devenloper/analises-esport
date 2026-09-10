@@ -437,6 +437,67 @@
     cursor:pointer;
   }
   .an-thumb button:hover{background:var(--warn);}
+
+  .an-suggestion-top{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:14px;
+    flex-wrap:wrap;
+    margin-bottom:16px;
+  }
+  .an-suggestion-team{
+    font-size:18px;
+    font-weight:600;
+    letter-spacing:-0.01em;
+  }
+  .an-suggestion-market{
+    font-size:13px;
+    color:var(--text-dim);
+    margin-top:2px;
+  }
+  .an-suggestion-pill{
+    background:var(--safe-bg);
+    color:var(--safe);
+    font-weight:600;
+    font-size:13.5px;
+    padding:8px 14px;
+    border-radius:20px;
+    white-space:normal;
+    text-align:right;
+    line-height:1.3;
+  }
+  @media (max-width:480px){
+    .an-suggestion-pill{text-align:left;}
+  }
+  .an-suggestion-stats{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-bottom:16px;
+  }
+  .stat-chip{
+    background:var(--surface-2);
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:8px 14px;
+  }
+  .stat-chip-label{
+    display:block;
+    font-size:10.5px;
+    text-transform:uppercase;
+    letter-spacing:0.03em;
+    color:var(--text-faint);
+    margin-bottom:2px;
+  }
+  .stat-chip-value{
+    font-family:var(--font-mono);
+    font-size:15px;
+    font-weight:600;
+    color:var(--text);
+  }
+  .stat-chip-value.safe{color:var(--safe);}
+
   .an-justificativa{
     font-size:13.5px;
     color:var(--text-dim);
@@ -1130,13 +1191,19 @@ Se as imagens não tiverem dados suficientes ou legíveis pra uma sugestão conf
       ? `<span class="an-alertas-title">Pontos de atenção</span><ul class="an-alertas">${p.alertas.map(a => `<li>${escapeHtml(a)}</li>`).join('')}</ul>`
       : '';
     anResult.innerHTML = `
-      <div class="profit-summary" style="margin-bottom:16px;">
-        <div class="profit-card"><span class="num">${escapeHtml(p.time || '—')}</span><span class="label">time</span></div>
-        <div class="profit-card"><span class="num">${escapeHtml(p.mercado || '—')}</span><span class="label">mercado</span></div>
-        <div class="profit-card"><span class="num">${escapeHtml(p.linha_sugerida || '—')}</span><span class="label">linha sugerida</span></div>
-        <div class="profit-card"><span class="num safe">${escapeHtml(p.media_observada || '—')}</span><span class="label">média observada</span></div>
-        <div class="profit-card"><span class="num safe">${escapeHtml(p.odd_minima || '1.50')}</span><span class="label">odd mínima</span></div>
+      <div class="an-suggestion-top">
+        <div>
+          <div class="an-suggestion-team">${escapeHtml(p.time || '—')}</div>
+          <div class="an-suggestion-market">${escapeHtml(p.mercado || '—')}</div>
+        </div>
+        <div class="an-suggestion-pill">${escapeHtml(p.linha_sugerida || '—')}</div>
       </div>
+
+      <div class="an-suggestion-stats">
+        <div class="stat-chip"><span class="stat-chip-label">Média observada</span><span class="stat-chip-value safe">${escapeHtml(p.media_observada || '—')}</span></div>
+        <div class="stat-chip"><span class="stat-chip-label">Odd mínima</span><span class="stat-chip-value safe">${escapeHtml(p.odd_minima || '1.50')}</span></div>
+      </div>
+
       <p class="an-justificativa">${escapeHtml(p.justificativa || '')}</p>
       ${alertasHtml}
 
