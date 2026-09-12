@@ -17,6 +17,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <style>
   :root{
     --bg: #10141a;
@@ -791,10 +792,102 @@
     color:var(--text-faint);
     font-weight:400;
   }
+
+  .header-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .logout-btn{
+    display:flex;
+    align-items:center;
+    gap:7px;
+    background:var(--surface-2);
+    border:1px solid var(--border);
+    color:var(--text-dim);
+    border-radius:8px;
+    padding:9px 14px;
+    font-family:var(--font-head);
+    font-weight:500;
+    font-size:13.5px;
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  .logout-btn:hover{border-color:var(--warn);color:var(--warn);}
+
+  /* ---------- Login screen ---------- */
+  .login-screen{
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+  }
+  .login-card{
+    width:100%;
+    max-width:360px;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:32px 28px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    text-align:center;
+  }
+  .login-card h1{
+    font-size:22px;
+    font-weight:600;
+    margin:0 0 6px;
+  }
+  .login-card .sub{
+    font-size:13px;
+    color:var(--text-dim);
+    margin:0 0 22px;
+  }
+  .login-card .field{width:100%;text-align:left;}
+  .login-card button.primary{margin-top:6px;}
+  .login-error{
+    width:100%;
+    min-height:14px;
+    font-size:12.5px;
+    color:var(--warn);
+    text-align:left;
+    margin:2px 0 10px;
+  }
+  .login-forgot{
+    display:inline-block;
+    margin-top:16px;
+    font-size:12.5px;
+    color:var(--text-dim);
+    text-decoration:none;
+  }
+  .login-forgot:hover{color:var(--accent);}
 </style>
 </head>
 <body>
-<div class="app">
+
+<div id="login-screen" class="login-screen">
+  <form id="login-form" class="login-card">
+    <svg class="brand-icon" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style="width:44px;height:44px;margin-bottom:14px;">
+      <rect width="64" height="64" rx="16" fill="#171d25"/>
+      <path d="M12 6 L14.2 9.8 L18 12 L14.2 14.2 L12 18 L9.8 14.2 L6 12 L9.8 9.8 Z" fill="#5b8def"/>
+      <polyline points="14,46 26,36 34,40 44,22 54,16" fill="none" stroke="#4caf7d" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="54" cy="16" r="4.5" fill="#4caf7d"/>
+    </svg>
+    <h1>IA Analytics</h1>
+    <p class="sub">Entre com seu e-mail e senha para continuar.</p>
+    <div class="field">
+      <label for="login-email">E-mail</label>
+      <input type="email" id="login-email" autocomplete="username" required>
+    </div>
+    <div class="field">
+      <label for="login-senha">Senha</label>
+      <input type="password" id="login-senha" autocomplete="current-password" required>
+    </div>
+    <div id="login-error" class="login-error"></div>
+    <button type="submit" class="primary" id="login-btn">Entrar</button>
+    <a href="#" id="forgot-password-link" class="login-forgot">Esqueci minha senha</a>
+  </form>
+</div>
+
+<div class="app" id="app-root" style="display:none;">
 
   <header class="hero">
     <div class="hero-title">
@@ -808,10 +901,16 @@
         <h1>IA Analytics</h1>
       </div>
     </div>
-    <button type="button" id="install-app-btn" class="install-btn" style="display:none;">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v13"/><path d="M7 11l5 5 5-5"/><path d="M5 20h14"/></svg>
-      Instalar app
-    </button>
+    <div class="header-actions">
+      <button type="button" id="install-app-btn" class="install-btn" style="display:none;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v13"/><path d="M7 11l5 5 5-5"/><path d="M5 20h14"/></svg>
+        Instalar app
+      </button>
+      <button type="button" id="logout-btn" class="logout-btn" title="Sair">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+        Sair
+      </button>
+    </div>
   </header>
 
   <nav class="tabs" id="tabs">
@@ -981,30 +1080,125 @@
 
   firebase.initializeApp(firebaseConfig);
   const db = firebase.firestore();
+  const auth = firebase.auth();
   const movimentosRef = db.collection('movimentos');
   const analisesRef = db.collection('analises');
 
   // Cada aposta enviada pela Calculadora vira um documento aqui —
   // isso permite listar e apagar movimentações específicas por dia.
   let movimentosAll = [];
-  movimentosRef.onSnapshot(
-    (snapshot) => {
-      movimentosAll = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      if(document.getElementById('view-ganhos').style.display !== 'none') renderGanhos();
-    },
-    (err) => console.error(err)
-  );
-
-  // Cada análise feita pela IA fica salva aqui, com o resultado
-  // (pendente/green/red) marcado manualmente depois.
   let analisesAll = [];
-  analisesRef.orderBy('createdAt', 'desc').onSnapshot(
-    (snapshot) => {
-      analisesAll = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      renderAnalisesSalvas();
-    },
-    (err) => console.error(err)
-  );
+  let firestoreListenersStarted = false;
+  let unsubMovimentos = null;
+  let unsubAnalises = null;
+
+  function startFirestoreListeners(){
+    if(firestoreListenersStarted) return;
+    firestoreListenersStarted = true;
+
+    unsubMovimentos = movimentosRef.onSnapshot(
+      (snapshot) => {
+        movimentosAll = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        if(document.getElementById('view-ganhos').style.display !== 'none') renderGanhos();
+      },
+      (err) => console.error(err)
+    );
+
+    // Cada análise feita pela IA fica salva aqui, com o resultado
+    // (pendente/green/red) marcado manualmente depois.
+    unsubAnalises = analisesRef.orderBy('createdAt', 'desc').onSnapshot(
+      (snapshot) => {
+        analisesAll = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        renderAnalisesSalvas();
+      },
+      (err) => console.error(err)
+    );
+  }
+
+  function stopFirestoreListeners(){
+    if(unsubMovimentos) unsubMovimentos();
+    if(unsubAnalises) unsubAnalises();
+    unsubMovimentos = null;
+    unsubAnalises = null;
+    firestoreListenersStarted = false;
+    movimentosAll = [];
+    analisesAll = [];
+  }
+
+  // ---------------------------------------------------------------
+  // LOGIN — a área principal só é montada/consultada no Firestore
+  // depois de autenticado. Conta criada manualmente no Console do
+  // Firebase (Authentication → Email/senha); não há autocadastro aqui.
+  // ---------------------------------------------------------------
+  const loginScreen = document.getElementById('login-screen');
+  const appRoot = document.getElementById('app-root');
+  const loginForm = document.getElementById('login-form');
+  const loginEmail = document.getElementById('login-email');
+  const loginSenha = document.getElementById('login-senha');
+  const loginError = document.getElementById('login-error');
+  const loginBtn = document.getElementById('login-btn');
+  const logoutBtn = document.getElementById('logout-btn');
+  const forgotPasswordLink = document.getElementById('forgot-password-link');
+
+  auth.onAuthStateChanged((user) => {
+    if(user){
+      loginScreen.style.display = 'none';
+      appRoot.style.display = '';
+      startFirestoreListeners();
+    } else {
+      appRoot.style.display = 'none';
+      loginScreen.style.display = 'flex';
+      stopFirestoreListeners();
+    }
+  });
+
+  loginForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    loginError.textContent = '';
+    loginBtn.disabled = true;
+    loginBtn.innerHTML = `<span class="spinner small"></span> Entrando…`;
+    try{
+      await auth.signInWithEmailAndPassword(loginEmail.value.trim(), loginSenha.value);
+    } catch(err){
+      console.error(err);
+      const msgs = {
+        'auth/invalid-email': 'E-mail inválido.',
+        'auth/user-disabled': 'Essa conta foi desativada.',
+        'auth/user-not-found': 'E-mail ou senha incorretos.',
+        'auth/wrong-password': 'E-mail ou senha incorretos.',
+        'auth/invalid-credential': 'E-mail ou senha incorretos.',
+        'auth/too-many-requests': 'Muitas tentativas. Aguarde um pouco e tente de novo.'
+      };
+      loginError.textContent = msgs[err.code] || 'Não foi possível entrar. Tente de novo.';
+    } finally {
+      loginBtn.disabled = false;
+      loginBtn.textContent = 'Entrar';
+    }
+  });
+
+  forgotPasswordLink.addEventListener('click', async (e) => {
+    e.preventDefault();
+    loginError.textContent = '';
+    const email = loginEmail.value.trim();
+    if(!email){
+      loginError.style.color = 'var(--warn)';
+      loginError.textContent = 'Digite seu e-mail acima primeiro, depois clique aqui.';
+      return;
+    }
+    try{
+      await auth.sendPasswordResetEmail(email);
+      loginError.style.color = 'var(--safe)';
+      loginError.textContent = 'Enviamos um e-mail com o link pra redefinir sua senha.';
+    } catch(err){
+      console.error(err);
+      loginError.style.color = 'var(--warn)';
+      loginError.textContent = 'Não foi possível enviar o e-mail. Confira se o endereço está certo.';
+    }
+  });
+
+  logoutBtn.addEventListener('click', async () => {
+    await auth.signOut();
+  });
 
   function escapeHtml(str){
     const d = document.createElement('div');
