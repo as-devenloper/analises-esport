@@ -1362,11 +1362,11 @@
   // cai num badge com as iniciais.
   // ---------------------------------------------------------------
   let teamCrestCache = {};
-  try{ teamCrestCache = JSON.parse(localStorage.getItem('teamCrestCacheV3') || '{}'); }catch(e){ teamCrestCache = {}; }
+  try{ teamCrestCache = JSON.parse(localStorage.getItem('teamCrestCacheV4') || '{}'); }catch(e){ teamCrestCache = {}; }
   const pendingCrestFetches = new Set();
 
   function saveCrestCache(){
-    try{ localStorage.setItem('teamCrestCacheV3', JSON.stringify(teamCrestCache)); }catch(e){}
+    try{ localStorage.setItem('teamCrestCacheV4', JSON.stringify(teamCrestCache)); }catch(e){}
   }
 
   function splitTeams(str){
@@ -1387,30 +1387,64 @@
     return `hsl(${hue}, 40%, 34%)`;
   }
 
-  // Busca o escudo/logo na Wikipédia (API pública, com CORS liberado via
-  // origin=*, sem chave e sem limite de uso). "intitle" + palavras de
-  // futebol ajudam a evitar bater num artigo homônimo que não é o time
-  // (ex.: a cidade "São Paulo" em vez do clube).
+  // Busca o escudo via Wikidata (API pública, CORS liberado, sem chave):
+  // 1) procura o nome e só aceita candidatos cuja descrição confirme que
+  //    é mesmo um clube de futebol (evita bater num bairro/cidade
+  //    homônimo, ex.: Chelsea, Liverpool, Flamengo, Coritiba, Beşiktaş);
+  // 2) pega o logo oficial (propriedade P154) desse item;
+  // 3) se não tiver P154, cai pra imagem da página da Wikipédia em inglês
+  //    ligada a esse mesmo item (já confirmado que é o clube certo).
+  function isClubDescription(desc){
+    if(!desc) return false;
+    const d = desc.toLowerCase();
+    return d.includes('football club') || d.includes('soccer club') || d.includes('association football')
+      || d.includes('futebol') || d.includes('futbol') || d.includes('fußball')
+      || (d.includes('sports club') && d.includes('football'));
+  }
+
   async function fetchTeamCrest(name){
     const key = name.trim().toLowerCase();
     if(teamCrestCache.hasOwnProperty(key)) return teamCrestCache[key];
+    let result = null;
     try{
-      const q = `intitle:"${name}" futebol OR football OR soccer OR clube OR fc OR sc`;
-      const url = 'https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch='
-        + encodeURIComponent(q)
-        + '&gsrlimit=1&prop=pageimages&piprop=thumbnail&pithumbsize=100&format=json&origin=*';
-      const res = await fetch(url);
-      const data = await res.json();
-      const pages = data && data.query && data.query.pages;
-      let thumb = null;
-      if(pages){
-        const first = Object.values(pages)[0];
-        if(first && first.thumbnail && first.thumbnail.source) thumb = first.thumbnail.source;
+      const searchUrl = 'https://www.wikidata.org/w/api.php?action=wbsearchentities&search='
+        + encodeURIComponent(name) + '&language=en&format=json&origin=*&limit=10&type=item';
+      const searchRes = await fetch(searchUrl);
+      const searchData = await searchRes.json();
+      const candidates = (searchData && searchData.search) || [];
+      const match = candidates.find(c => isClubDescription(c.description));
+
+      if(match){
+        const qid = match.id;
+        const entUrl = 'https://www.wikidata.org/w/api.php?action=wbgetentities&ids=' + qid
+          + '&props=claims|sitelinks&sitefilter=enwiki&format=json&origin=*';
+        const entRes = await fetch(entUrl);
+        const entData = await entRes.json();
+        const entity = entData && entData.entities && entData.entities[qid];
+        const logoClaim = entity && entity.claims && entity.claims.P154 && entity.claims.P154[0];
+        const filename = logoClaim && logoClaim.mainsnak && logoClaim.mainsnak.datavalue && logoClaim.mainsnak.datavalue.value;
+
+        if(filename){
+          result = 'https://commons.wikimedia.org/wiki/Special:FilePath/' + encodeURIComponent(filename) + '?width=100';
+        } else {
+          const enTitle = entity && entity.sitelinks && entity.sitelinks.enwiki && entity.sitelinks.enwiki.title;
+          if(enTitle){
+            const imgUrl = 'https://en.wikipedia.org/w/api.php?action=query&titles=' + encodeURIComponent(enTitle)
+              + '&prop=pageimages&piprop=thumbnail&pithumbsize=100&format=json&origin=*';
+            const imgRes = await fetch(imgUrl);
+            const imgData = await imgRes.json();
+            const pages = imgData && imgData.query && imgData.query.pages;
+            if(pages){
+              const first = Object.values(pages)[0];
+              if(first && first.thumbnail && first.thumbnail.source) result = first.thumbnail.source;
+            }
+          }
+        }
       }
-      teamCrestCache[key] = thumb;
     } catch(e){
-      teamCrestCache[key] = null;
+      result = null;
     }
+    teamCrestCache[key] = result;
     saveCrestCache();
     return teamCrestCache[key];
   }
