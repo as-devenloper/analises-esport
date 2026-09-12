@@ -859,6 +859,44 @@
     text-decoration:none;
   }
   .login-forgot:hover{color:var(--accent);}
+
+  /* ---------- Escudos dos times no histórico ---------- */
+  .name{
+    display:flex;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:6px;
+  }
+  .arrow{color:var(--text-faint);}
+  .team-chip{
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+  }
+  .team-crest{
+    width:18px;
+    height:18px;
+    object-fit:contain;
+    border-radius:3px;
+    flex-shrink:0;
+  }
+  .team-crest-fallback{
+    width:18px;
+    height:18px;
+    border-radius:50%;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    font-size:8.5px;
+    font-weight:700;
+    color:#fff;
+    flex-shrink:0;
+  }
+  .vs-sep{
+    color:var(--text-faint);
+    font-size:11px;
+    margin:0 1px;
+  }
 </style>
 </head>
 <body>
@@ -1317,6 +1355,106 @@
   function bookmakerIconUrl(dominio){
     return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(dominio)}&sz=32`;
   }
+
+  // ---------------------------------------------------------------
+  // ESCUDOS DOS TIMES — busca na TheSportsDB (gratuita) pelo nome
+  // extraído pela IA, com cache em localStorage. Time não encontrado
+  // cai num badge com as iniciais.
+  // ---------------------------------------------------------------
+  let teamCrestCache = {};
+  try{ teamCrestCache = JSON.parse(localStorage.getItem('teamCrestCache') || '{}'); }catch(e){ teamCrestCache = {}; }
+  const pendingCrestFetches = new Set();
+
+  function saveCrestCache(){
+    try{ localStorage.setItem('teamCrestCache', JSON.stringify(teamCrestCache)); }catch(e){}
+  }
+
+  function splitTeams(str){
+    if(!str) return [];
+    return str.split(/\s+(?:vs\.?|x)\s+/i).map(s => s.trim()).filter(Boolean);
+  }
+
+  function teamInitials(name){
+    const words = name.split(/\s+/).filter(Boolean);
+    if(words.length === 1) return words[0].slice(0, 2).toUpperCase();
+    return (words[0][0] + words[1][0]).toUpperCase();
+  }
+
+  function teamColor(name){
+    let hash = 0;
+    for(let i = 0; i < name.length; i++){ hash = name.charCodeAt(i) + ((hash << 5) - hash); }
+    const hue = Math.abs(hash) % 360;
+    return `hsl(${hue}, 40%, 34%)`;
+  }
+
+  async function fetchTeamCrest(name){
+    const key = name.trim().toLowerCase();
+    if(teamCrestCache.hasOwnProperty(key)) return teamCrestCache[key];
+    try{
+      const res = await fetch('https://www.thesportsdb.com/api/v1/json/3/searchteams.php?t=' + encodeURIComponent(name));
+      const data = await res.json();
+      const url = (data && data.teams && data.teams[0] && data.teams[0].strTeamBadge) ? data.teams[0].strTeamBadge : null;
+      teamCrestCache[key] = url;
+    } catch(e){
+      teamCrestCache[key] = null;
+    }
+    saveCrestCache();
+    return teamCrestCache[key];
+  }
+
+  function queueCrestFetch(name, slotId){
+    const key = name.trim().toLowerCase();
+    if(pendingCrestFetches.has(key)) return;
+    pendingCrestFetches.add(key);
+    fetchTeamCrest(name).then((url) => {
+      pendingCrestFetches.delete(key);
+      const el = document.getElementById(slotId);
+      if(!el || !url) return;
+      const img = document.createElement('img');
+      img.className = 'team-crest';
+      img.alt = '';
+      img.dataset.team = name;
+      img.src = url;
+      el.replaceWith(img);
+    });
+  }
+
+  // Time com escudo já conhecido é renderizado direto; senão, mostra
+  // o badge de iniciais e dispara a busca (o resultado some acima).
+  function renderTeamCrestSlot(name){
+    const key = name.trim().toLowerCase();
+    const initials = escapeHtml(teamInitials(name));
+    const color = teamColor(name);
+    if(teamCrestCache.hasOwnProperty(key)){
+      const url = teamCrestCache[key];
+      if(url) return `<img src="${escapeHtml(url)}" class="team-crest" data-team="${escapeHtml(name)}" alt="">`;
+      return `<span class="team-crest-fallback" style="background:${color}">${initials}</span>`;
+    }
+    const slotId = 'crest-' + Math.random().toString(36).slice(2, 10);
+    queueCrestFetch(name, slotId);
+    return `<span class="team-crest-fallback" id="${slotId}" style="background:${color}">${initials}</span>`;
+  }
+
+  function renderTeamsWithCrests(timeStr){
+    const teams = splitTeams(timeStr);
+    if(!teams.length) return escapeHtml(timeStr || '—');
+    return teams
+      .map(t => `<span class="team-chip">${renderTeamCrestSlot(t)}<span>${escapeHtml(t)}</span></span>`)
+      .join('<span class="vs-sep">×</span>');
+  }
+
+  // Se o escudo falhar ao carregar (URL quebrada), cai pro badge de iniciais.
+  document.addEventListener('error', (e) => {
+    const img = e.target;
+    if(img && img.classList && img.classList.contains('team-crest')){
+      const name = img.dataset.team || '?';
+      const span = document.createElement('span');
+      span.className = 'team-crest-fallback';
+      span.style.background = teamColor(name);
+      span.textContent = teamInitials(name);
+      img.replaceWith(span);
+    }
+  }, true);
 
   function populateCasasList(){
     const list = document.getElementById('an-casas-list');
@@ -2184,7 +2322,7 @@ Se não conseguir ler a odd ou os mercados no print, responda com {"erro": "moti
         <div class="an-saved-item">
           <button type="button" class="an-saved-row" onclick="toggleAnaliseDetail('${a.id}')">
             <div class="an-saved-info">
-              <div class="name">${isOpen ? '▾' : '▸'} ${escapeHtml(a.time || '—')}</div>
+              <div class="name"><span class="arrow">${isOpen ? '▾' : '▸'}</span> ${renderTeamsWithCrests(a.time)}</div>
               <div class="an-match-datetime">${dataHoraJogo ? escapeHtml(dataHoraJogo) : 'Data/horário não informado'}</div>
               <div class="an-market-highlight">${escapeHtml(a.mercado || '—')}<span class="sep">·</span>Linha ${escapeHtml(a.linha_sugerida || '—')}${oddInfo}</div>
             </div>
