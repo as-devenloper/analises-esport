@@ -5,6 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>IA Analytics</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMTYiIGZpbGw9IiMxMjE2MWMiLz48cGF0aCBkPSJNMTIgNiBMMTQuMiA5LjggTDE4IDEyIEwxNC4yIDE0LjIgTDEyIDE4IEw5LjggMTQuMiBMNiAxMiBMOS44IDkuOCBaIiBmaWxsPSIjNWI4ZGVmIi8+PHBvbHlsaW5lIHBvaW50cz0iMTQsNDYgMjYsMzYgMzQsNDAgNDQsMjIgNTQsMTYiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzRjYWY3ZCIgc3Ryb2tlLXdpZHRoPSI0LjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxjaXJjbGUgY3g9IjU0IiBjeT0iMTYiIHI9IjQuNSIgZmlsbD0iIzRjYWY3ZCIvPjwvc3ZnPg==">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#10141a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="IA Analytics">
+<link rel="apple-touch-icon" href="icon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -714,6 +721,76 @@
     font-size:12px;
     color:var(--text-faint);
   }
+
+  /* ---------- Install app button ---------- */
+  .install-btn{
+    display:flex;
+    align-items:center;
+    gap:7px;
+    background:var(--accent);
+    color:#0d1117;
+    border:none;
+    border-radius:8px;
+    padding:9px 16px;
+    font-family:var(--font-head);
+    font-weight:600;
+    font-size:13.5px;
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  .install-btn:hover{filter:brightness(1.08);}
+
+  /* ---------- Loading spinner ---------- */
+  .loading-state{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:12px;
+    padding:28px 0;
+    color:var(--text-dim);
+    font-size:13px;
+  }
+  .spinner{
+    width:26px;
+    height:26px;
+    border-radius:50%;
+    border:3px solid var(--border);
+    border-top-color:var(--accent);
+    animation:spin 0.8s linear infinite;
+  }
+  .spinner.small{
+    width:15px;
+    height:15px;
+    border-width:2px;
+    display:inline-block;
+    vertical-align:middle;
+  }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+
+  /* ---------- Saved analysis: match datetime + market highlight ---------- */
+  .an-match-datetime{
+    font-size:12.5px;
+    color:var(--text-dim);
+    margin-top:2px;
+  }
+  .an-market-highlight{
+    display:inline-flex;
+    flex-wrap:wrap;
+    gap:6px;
+    align-items:center;
+    margin-top:8px;
+    padding:5px 10px;
+    border-radius:6px;
+    background:rgba(91,141,239,0.12);
+    color:var(--accent);
+    font-size:12.5px;
+    font-weight:500;
+  }
+  .an-market-highlight .sep{
+    color:var(--text-faint);
+    font-weight:400;
+  }
 </style>
 </head>
 <body>
@@ -731,6 +808,10 @@
         <h1>IA Analytics</h1>
       </div>
     </div>
+    <button type="button" id="install-app-btn" class="install-btn" style="display:none;">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v13"/><path d="M7 11l5 5 5-5"/><path d="M5 20h14"/></svg>
+      Instalar app
+    </button>
   </header>
 
   <nav class="tabs" id="tabs">
@@ -766,9 +847,7 @@
 
     <section class="panel">
       <h2>Sugestão da IA</h2>
-      <div id="an-result">
-        <div class="empty-state">Envie um ou mais prints e clique em "Analisar com IA" pra ver a sugestão aqui.</div>
-      </div>
+      <div id="an-result"></div>
     </section>
 
     <section class="panel" style="grid-column: 1 / -1;">
@@ -854,6 +933,39 @@
 
 
 <script>
+  // ---------------------------------------------------------------
+  // PWA: registro do service worker + botão "Instalar app"
+  // ---------------------------------------------------------------
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    });
+  }
+
+  let deferredInstallPrompt = null;
+  const installBtn = document.getElementById('install-app-btn');
+
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    installBtn.style.display = 'flex';
+  });
+
+  installBtn.addEventListener('click', async () => {
+    if(!deferredInstallPrompt) return;
+    installBtn.disabled = true;
+    deferredInstallPrompt.prompt();
+    await deferredInstallPrompt.userChoice;
+    deferredInstallPrompt = null;
+    installBtn.style.display = 'none';
+    installBtn.disabled = false;
+  });
+
+  window.addEventListener('appinstalled', () => {
+    installBtn.style.display = 'none';
+    deferredInstallPrompt = null;
+  });
+
   // ---------------------------------------------------------------
   // CONFIGURAÇÃO DO FIREBASE — troque pelos dados do seu projeto
   // (Console do Firebase → Configurações do projeto → Seus apps → SDK)
@@ -1409,8 +1521,10 @@ MÉTODO DE PROJEÇÃO (siga essa ordem):
 
 MOMENTO REAL DOS TIMES: se os dados mostrarem jogo a jogo (não só a média consolidada), comente se há tendência clara nos jogos mais recentes (subindo, caindo, estável). Se só houver a média consolidada, diga isso e não invente tendência.
 
+Se a data e o horário de início da partida aparecerem nos dados (print ou texto extraído), inclua no formato "data_jogo": "dd/mm" e "hora_jogo": "HH:mm". Se não aparecerem, retorne esses dois campos como null — não invente.
+
 Responda APENAS com um objeto JSON, sem markdown, sem texto antes ou depois, exatamente neste formato:
-{"time": "...", "mercado": "...", "linha_sugerida": "...", "media_observada": "ex: 5.8 casa (Flu) + 10.4 fora (Platense) → projeção 9.7", "odd_valor": "odd justa calculada da linha escolhida, ex: 1.65", "probabilidade_estimada": "ex: 61% (já descontada)", "amostra": "ex: 5 jogos cada lado, CV 0.31", "tabela_linhas": [{"linha": "ex: Mais de 7.5", "odd_justa": "1.35", "situacao": "positivo mas odd baixa"}, {"linha": "ex: Mais de 8.5", "odd_justa": "1.61", "situacao": "melhor relação"}, {"linha": "ex: Mais de 9.5", "odd_justa": "1.85", "situacao": "valor alto, risco maior"}], "justificativa": "no máximo 4 frases: a lógica do cálculo aditivo, o desconto aplicado, e por que essa linha (não outra) tem a melhor relação risco/retorno", "descartados": [{"mercado": "ex: Gols", "motivo": "frase curta com o número que descarta"}], "mercados_avaliados": ["lista curta de todos os mercados vistos"], "alertas": ["no máximo 3 itens curtos"]}
+{"time": "...", "mercado": "...", "data_jogo": "dd/mm ou null", "hora_jogo": "HH:mm ou null", "linha_sugerida": "...", "media_observada": "ex: 5.8 casa (Flu) + 10.4 fora (Platense) → projeção 9.7", "odd_valor": "odd justa calculada da linha escolhida, ex: 1.65", "probabilidade_estimada": "ex: 61% (já descontada)", "amostra": "ex: 5 jogos cada lado, CV 0.31", "tabela_linhas": [{"linha": "ex: Mais de 7.5", "odd_justa": "1.35", "situacao": "positivo mas odd baixa"}, {"linha": "ex: Mais de 8.5", "odd_justa": "1.61", "situacao": "melhor relação"}, {"linha": "ex: Mais de 9.5", "odd_justa": "1.85", "situacao": "valor alto, risco maior"}], "justificativa": "no máximo 4 frases: a lógica do cálculo aditivo, o desconto aplicado, e por que essa linha (não outra) tem a melhor relação risco/retorno", "descartados": [{"mercado": "ex: Gols", "motivo": "frase curta com o número que descarta"}], "mercados_avaliados": ["lista curta de todos os mercados vistos"], "alertas": ["no máximo 3 itens curtos"]}
 
 Seja objetivo em todos os campos — respostas longas correm risco de cortar o JSON. O JSON precisa ser válido: tudo em uma linha só, sem quebra de linha dentro dos textos. Se nenhuma linha passar do piso de 1.50 depois do desconto, ou os dados forem insuficientes, responda com {"erro": "motivo em uma frase"} em vez do formato acima.`;
 
@@ -1421,8 +1535,8 @@ Seja objetivo em todos os campos — respostas longas correm risco de cortar o J
       return;
     }
     anAnalyzeBtn.disabled = true;
-    anAnalyzeBtn.textContent = 'Analisando…';
-    anResult.innerHTML = `<div class="empty-state">Analisando ${anHtmlText ? 'os dados' : (anImages.length > 1 ? 'os prints' : 'o print')}…</div>`;
+    anAnalyzeBtn.innerHTML = `<span class="spinner small"></span> Analisando…`;
+    anResult.innerHTML = `<div class="loading-state"><span class="spinner"></span></div>`;
 
     const promptFinal = anHtmlText
       ? `${AN_PROMPT}\n\n--- DADOS EXTRAÍDOS DA PÁGINA DO TIP SCORE (texto, mais confiável que imagem) ---\n${anHtmlText}`
@@ -1482,6 +1596,8 @@ Seja objetivo em todos os campos — respostas longas correm risco de cortar o J
       const docRef = await analisesRef.add({
         time: p.time || null,
         mercado: p.mercado || null,
+        dataJogo: p.data_jogo || null,
+        horaJogo: p.hora_jogo || null,
         linha_sugerida: p.linha_sugerida || null,
         media_observada: p.media_observada || null,
         odd_valor: p.odd_valor || null,
@@ -1764,6 +1880,8 @@ Se não conseguir ler a odd ou os mercados no print, responda com {"erro": "moti
   async function updateAnaliseOdd(id, oddValorStr){
     const oddInput = document.getElementById('an-edit-odd-' + id);
     const casaInput = document.getElementById('an-edit-casa-' + id);
+    const dataInput = document.getElementById('an-edit-data-' + id);
+    const horaInput = document.getElementById('an-edit-hora-' + id);
     const resultEl = document.getElementById('an-edit-result-' + id);
     const oddVista = parseFloat(oddInput.value.replace(',', '.'));
     if(isNaN(oddVista)){
@@ -1777,6 +1895,8 @@ Se não conseguir ler a odd ou os mercados no print, responda com {"erro": "moti
     const casaEncontrada = BOOKMAKERS.find(b => b.nome.toLowerCase() === casaNome.toLowerCase());
 
     const update = { oddVista, temValor };
+    if(dataInput) update.dataJogo = dataInput.value.trim() || null;
+    if(horaInput) update.horaJogo = horaInput.value.trim() || null;
     if(casaEncontrada) update.casaAposta = casaEncontrada;
     else if(!casaNome) update.casaAposta = firebase.firestore.FieldValue.delete();
 
@@ -1841,6 +1961,7 @@ Se não conseguir ler a odd ou os mercados no print, responda com {"erro": "moti
       }
       const isOpen = expandedAnaliseId === a.id;
       const oddInfo = a.oddVista != null ? ` · odd vista ${Number(a.oddVista).toFixed(2)}${a.temValor === false ? ' (sem valor)' : ''}` : '';
+      const dataHoraJogo = [a.dataJogo, a.horaJogo].filter(Boolean).join(' · ');
 
       const mercadosHtml = (a.mercados_avaliados && a.mercados_avaliados.length)
         ? `<div class="an-mercados-avaliados"><span class="an-alertas-title">Mercados avaliados</span>${a.mercados_avaliados.map(m => `<span class="an-mercado-chip">${escapeHtml(m)}</span>`).join('')}</div>`
@@ -1863,8 +1984,9 @@ Se não conseguir ler a odd ou os mercados no print, responda com {"erro": "moti
         <div class="an-saved-item">
           <button type="button" class="an-saved-row" onclick="toggleAnaliseDetail('${a.id}')">
             <div class="an-saved-info">
-              <div class="name">${isOpen ? '▾' : '▸'} ${escapeHtml(a.time || '—')} · ${escapeHtml(a.mercado || '—')}</div>
-              <div class="meta">Linha ${escapeHtml(a.linha_sugerida || '—')}${oddInfo}</div>
+              <div class="name">${isOpen ? '▾' : '▸'} ${escapeHtml(a.time || '—')}</div>
+              <div class="an-match-datetime">${dataHoraJogo ? escapeHtml(dataHoraJogo) : 'Data/horário não informado'}</div>
+              <div class="an-market-highlight">${escapeHtml(a.mercado || '—')}<span class="sep">·</span>Linha ${escapeHtml(a.linha_sugerida || '—')}${oddInfo}</div>
             </div>
           </button>
           <div class="an-saved-toolbar">
@@ -1886,6 +2008,13 @@ Se não conseguir ler a odd ou os mercados no print, responda com {"erro": "moti
             ${alertasHtml}
 
             <div class="an-check-box" style="margin-top:16px;">
+              <label>Data e horário da partida</label>
+              <div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap;">
+                <input type="text" id="an-edit-data-${a.id}" value="${a.dataJogo ? escapeHtml(a.dataJogo) : ''}" placeholder="11/09" style="max-width:120px;">
+                <input type="text" id="an-edit-hora-${a.id}" value="${a.horaJogo ? escapeHtml(a.horaJogo) : ''}" placeholder="16:00" style="max-width:120px;">
+              </div>
+            </div>
+            <div class="an-check-box" style="margin-top:14px;">
               <label>Odd vista / casa de apostas (editar se encontrou melhor em outro lugar)</label>
               <div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap;">
                 <input type="text" inputmode="decimal" id="an-edit-odd-${a.id}" value="${a.oddVista != null ? String(a.oddVista).replace('.', ',') : ''}" placeholder="1,85" style="max-width:140px;">
