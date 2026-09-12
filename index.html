@@ -153,6 +153,29 @@
     background:rgba(91,141,239,0.12);
   }
 
+  .visually-hidden{
+    position:absolute;
+    width:1px;height:1px;
+    padding:0;margin:-1px;
+    overflow:hidden;
+    clip:rect(0,0,0,0);
+    white-space:nowrap;
+    border:0;
+  }
+  .file-btn{
+    display:inline-block;
+    background:var(--surface-2);
+    border:1px solid var(--border);
+    color:var(--text);
+    border-radius:6px;
+    padding:9px 16px;
+    font-family:var(--font-head);
+    font-size:13.5px;
+    font-weight:500;
+    cursor:pointer;
+  }
+  .file-btn:hover{border-color:var(--accent);}
+
   button.primary{
     width:100%;
     background:var(--accent);
@@ -519,6 +542,17 @@
     color:var(--text-faint);
     margin-top:16px;
   }
+  .an-custo-box{
+    font-size:11.5px;
+    color:var(--text-faint);
+    margin-bottom:16px;
+    padding-bottom:14px;
+    border-bottom:1px solid var(--border);
+    line-height:1.5;
+  }
+  .an-custo-box strong{color:var(--text-dim);}
+  .an-custo-box .mono{font-family:var(--font-mono);}
+
   .an-raw-response{
     margin-top:16px;
     padding:14px;
@@ -661,6 +695,12 @@
     align-items:center;
     gap:10px;
   }
+  .an-casa-icon{
+    width:18px;
+    height:18px;
+    border-radius:4px;
+    display:block;
+  }
   .an-saved-detail{
     padding:0 14px 16px 30px;
   }
@@ -702,11 +742,10 @@
   <div class="grid" id="view-analises">
     <section class="panel">
       <h2>Enviar dados</h2>
-      <p class="sub">Envie prints das médias ou, melhor ainda, a página salva do Tip Score em HTML (mais precisa, sem risco de erro de leitura). A IA calcula a odd de valor a partir da probabilidade estimada, nunca abaixo do piso de 1.50.</p>
 
       <div class="field">
-        <label for="an-file">Imagens do print</label>
-        <input type="file" id="an-file" accept="image/*" multiple>
+        <label class="file-btn" for="an-file">Escolher Imagem</label>
+        <input type="file" id="an-file" accept="image/*" multiple class="visually-hidden">
       </div>
 
       <div id="an-preview-grid" class="an-preview-grid"></div>
@@ -714,8 +753,8 @@
       <div class="an-check-divider"><span>ou</span></div>
 
       <div class="field">
-        <label for="an-html-file">Página salva do Tip Score (.html) — mais preciso que print</label>
-        <input type="file" id="an-html-file" accept=".html,.htm">
+        <label class="file-btn" for="an-html-file">Escolher Arquivo (.html)</label>
+        <input type="file" id="an-html-file" accept=".html,.htm" class="visually-hidden">
       </div>
       <div id="an-html-status" style="font-size:12.5px;color:var(--text-dim);margin-top:6px;"></div>
 
@@ -725,15 +764,15 @@
 
     <section class="panel">
       <h2>Sugestão da IA</h2>
-      <p class="sub">Odd de valor calculada a partir da probabilidade estimada pela IA, nunca abaixo do piso de 1.50.</p>
       <div id="an-result">
         <div class="empty-state">Envie um ou mais prints e clique em "Analisar com IA" pra ver a sugestão aqui.</div>
       </div>
     </section>
 
     <section class="panel" style="grid-column: 1 / -1;">
-      <h2>Análises salvas</h2>
-      <p class="sub">Cada análise feita fica salva aqui — marque Green ou Red pra acompanhar o resultado.</p>
+      <h2>Histórico de Análises</h2>
+      <p class="sub">Acompanhe o histórico das análises feitas.</p>
+      <div id="an-stats-summary" class="profit-summary" style="margin-bottom:18px;"></div>
       <div id="an-saved-container"></div>
     </section>
   </div>
@@ -932,6 +971,39 @@
 
   // Extrai o JSON de uma resposta de texto da IA, tolerando texto extra
   // ao redor e quebras de linha cruas dentro dos valores (inválidas em JSON).
+  // Lista curada de casas de apostas comuns no Brasil — o "ícone" vem
+  // do serviço de favicon do Google, sem precisar hospedar nada.
+  const BOOKMAKERS = [
+    { nome: 'Bet365', dominio: 'bet365.com' },
+    { nome: 'Betano', dominio: 'betano.com' },
+    { nome: 'KTO', dominio: 'kto.com' },
+    { nome: 'Sportingbet', dominio: 'sportingbet.com' },
+    { nome: 'Betfair', dominio: 'betfair.com' },
+    { nome: 'Pinnacle', dominio: 'pinnacle.com' },
+    { nome: 'Novibet', dominio: 'novibet.com' },
+    { nome: 'Betnacional', dominio: 'betnacional.com' },
+    { nome: 'EstrelaBet', dominio: 'estrelabet.com' },
+    { nome: 'Betsson', dominio: 'betsson.com' },
+    { nome: 'Rivalo', dominio: 'rivalo.com' },
+    { nome: 'BetWarrior', dominio: 'betwarrior.bet.br' },
+    { nome: 'F12.bet', dominio: 'f12.bet' },
+    { nome: 'Vaidebet', dominio: 'vaidebet.com' },
+    { nome: 'Br4bet', dominio: 'br4bet.com' },
+    { nome: 'Superbet', dominio: 'superbet.com' },
+    { nome: '1xBet', dominio: '1xbet.com' },
+    { nome: 'Betvip', dominio: 'betvip.com' },
+  ];
+
+  function bookmakerIconUrl(dominio){
+    return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(dominio)}&sz=32`;
+  }
+
+  function populateCasasList(){
+    const list = document.getElementById('an-casas-list');
+    if(!list) return;
+    list.innerHTML = BOOKMAKERS.map(b => `<option value="${escapeHtml(b.nome)}">`).join('');
+  }
+
   function extractAiJson(textBlock){
     const clean = textBlock.replace(/```json|```/g, '').trim();
     const match = clean.match(/\{[\s\S]*\}/);
@@ -1380,7 +1452,7 @@ Seja objetivo em todos os campos — respostas longas correm risco de cortar o J
         `;
         return;
       }
-      renderAnalise(parsed);
+      renderAnalise(parsed, data.usage);
     } catch(err){
       console.error(err);
       anResult.innerHTML = `<div class="empty-state">Não foi possível analisar agora. Tente de novo em instantes.</div>`;
@@ -1416,7 +1488,7 @@ Seja objetivo em todos os campos — respostas longas correm risco de cortar o J
     }
   }
 
-  function renderAnalise(p){
+  function renderAnalise(p, usage){
     if(p.erro){
       anResult.innerHTML = `<div class="empty-state">${escapeHtml(p.erro)}</div>`;
       return;
@@ -1437,7 +1509,17 @@ Seja objetivo em todos os campos — respostas longas correm risco de cortar o J
     const descartadosHtml = (p.descartados && p.descartados.length)
       ? `<div class="an-mercados-avaliados"><span class="an-alertas-title">Descartados</span><ul class="an-alertas">${p.descartados.map(d => `<li><strong>${escapeHtml(d.mercado || '—')}:</strong> ${escapeHtml(d.motivo || '')}</li>`).join('')}</ul></div>`
       : '';
+    // Custo estimado a partir dos tokens — a API não informa o saldo
+    // restante da conta por essa chamada, só o consumo dessa análise.
+    let custoHtml = '';
+    if(usage){
+      const inTok = usage.input_tokens || 0;
+      const outTok = usage.output_tokens || 0;
+      const custoUsd = (inTok / 1e6) * 3 + (outTok / 1e6) * 15;
+      custoHtml = `<div class="an-custo-box">Custo estimado dessa análise: <strong>~US$ ${custoUsd.toFixed(4)}</strong> (${inTok.toLocaleString('pt-BR')} tokens de entrada, ${outTok.toLocaleString('pt-BR')} de saída) · o saldo restante da conta não aparece aqui — confira em <span class="mono">console.anthropic.com</span>.</div>`;
+    }
     anResult.innerHTML = `
+      ${custoHtml}
       <div class="an-suggestion-top">
         <div>
           <div class="an-suggestion-team">${escapeHtml(p.time || '—')}</div>
@@ -1464,8 +1546,10 @@ Seja objetivo em todos os campos — respostas longas correm risco de cortar o J
         <label for="an-check-odd">Qual odd você encontrou na casa?</label>
         <div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap;">
           <input type="text" inputmode="decimal" id="an-check-odd" placeholder="1,85" style="max-width:140px;">
+          <input type="text" id="an-check-casa" list="an-casas-list" placeholder="Pesquisar casa de apostas..." style="max-width:220px;">
           <button type="button" class="primary" id="an-check-btn" style="width:auto;padding:9px 16px;">Conferir valor</button>
         </div>
+        <datalist id="an-casas-list"></datalist>
         <div id="an-check-result" style="margin-top:10px;font-size:13.5px;"></div>
 
         <div class="an-check-divider"><span>ou</span></div>
@@ -1478,6 +1562,7 @@ Seja objetivo em todos os campos — respostas longas correm risco de cortar o J
         <div id="an-check-file-result" style="margin-top:10px;font-size:13.5px;"></div>
       </div>
     `;
+    populateCasasList();
 
     saveAnalise(p);
 
@@ -1501,8 +1586,12 @@ Seja objetivo em todos os campos — respostas longas correm risco de cortar o J
         resultEl.style.color = 'var(--warn)';
         resultEl.textContent = `✕ Sem valor — ${oddVista.toFixed(2)} está abaixo da odd de valor calculada (${oddValorCalculada.toFixed(2)}).`;
       }
+      const casaNome = document.getElementById('an-check-casa').value.trim();
+      const casaEncontrada = BOOKMAKERS.find(b => b.nome.toLowerCase() === casaNome.toLowerCase());
       if(lastSavedAnaliseId){
-        analisesRef.doc(lastSavedAnaliseId).update({ oddVista, temValor }).catch(err => console.error(err));
+        const update = { oddVista, temValor };
+        if(casaEncontrada) update.casaAposta = casaEncontrada;
+        analisesRef.doc(lastSavedAnaliseId).update(update).catch(err => console.error(err));
       }
     });
 
@@ -1667,7 +1756,25 @@ Se não conseguir ler a odd ou os mercados no print, responda com {"erro": "moti
     renderAnalisesSalvas();
   }
 
+  function renderAnaliseStats(){
+    const summary = document.getElementById('an-stats-summary');
+    const total = analisesAll.length;
+    const green = analisesAll.filter(a => a.resultado === 'green').length;
+    const red = analisesAll.filter(a => a.resultado === 'red').length;
+    const settled = green + red;
+    const taxaAcerto = settled ? Math.round((green / settled) * 100) : 0;
+    const taxaErro = settled ? Math.round((red / settled) * 100) : 0;
+    summary.innerHTML = `
+      <div class="profit-card"><span class="num">${total}</span><span class="label">entradas no geral</span></div>
+      <div class="profit-card"><span class="num safe">${green}</span><span class="label">green</span></div>
+      <div class="profit-card"><span class="num warn">${red}</span><span class="label">red</span></div>
+      <div class="profit-card"><span class="num safe">${taxaAcerto}%</span><span class="label">média de acertos</span></div>
+      <div class="profit-card"><span class="num warn">${taxaErro}%</span><span class="label">média de erros</span></div>
+    `;
+  }
+
   function renderAnalisesSalvas(){
+    renderAnaliseStats();
     const container = document.getElementById('an-saved-container');
     if(analisesAll.length === 0){
       container.innerHTML = `<div class="empty-state">Nenhuma análise salva ainda. Analise um print pra ela aparecer aqui.</div>`;
@@ -1715,6 +1822,7 @@ Se não conseguir ler a odd ou os mercados no print, responda com {"erro": "moti
             </div>
           </button>
           <div class="an-saved-toolbar">
+            ${a.casaAposta ? `<img class="an-casa-icon" src="${bookmakerIconUrl(a.casaAposta.dominio)}" alt="${escapeHtml(a.casaAposta.nome)}" title="${escapeHtml(a.casaAposta.nome)}">` : ''}
             ${resultadoHtml}
             <button class="icon-btn" title="Excluir" onclick="deleteAnalise('${a.id}')">✕</button>
           </div>
