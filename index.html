@@ -1362,11 +1362,11 @@
   // cai num badge com as iniciais.
   // ---------------------------------------------------------------
   let teamCrestCache = {};
-  try{ teamCrestCache = JSON.parse(localStorage.getItem('teamCrestCacheV2') || '{}'); }catch(e){ teamCrestCache = {}; }
+  try{ teamCrestCache = JSON.parse(localStorage.getItem('teamCrestCacheV3') || '{}'); }catch(e){ teamCrestCache = {}; }
   const pendingCrestFetches = new Set();
 
   function saveCrestCache(){
-    try{ localStorage.setItem('teamCrestCacheV2', JSON.stringify(teamCrestCache)); }catch(e){}
+    try{ localStorage.setItem('teamCrestCacheV3', JSON.stringify(teamCrestCache)); }catch(e){}
   }
 
   function splitTeams(str){
@@ -1387,14 +1387,27 @@
     return `hsl(${hue}, 40%, 34%)`;
   }
 
+  // Busca o escudo/logo na Wikipédia (API pública, com CORS liberado via
+  // origin=*, sem chave e sem limite de uso). "intitle" + palavras de
+  // futebol ajudam a evitar bater num artigo homônimo que não é o time
+  // (ex.: a cidade "São Paulo" em vez do clube).
   async function fetchTeamCrest(name){
     const key = name.trim().toLowerCase();
     if(teamCrestCache.hasOwnProperty(key)) return teamCrestCache[key];
     try{
-      const res = await fetch('https://www.thesportsdb.com/api/v1/json/123/searchteams.php?t=' + encodeURIComponent(name));
+      const q = `intitle:"${name}" futebol OR football OR soccer OR clube OR fc OR sc`;
+      const url = 'https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch='
+        + encodeURIComponent(q)
+        + '&gsrlimit=1&prop=pageimages&piprop=thumbnail&pithumbsize=100&format=json&origin=*';
+      const res = await fetch(url);
       const data = await res.json();
-      const url = (data && data.teams && data.teams[0] && data.teams[0].strTeamBadge) ? data.teams[0].strTeamBadge : null;
-      teamCrestCache[key] = url;
+      const pages = data && data.query && data.query.pages;
+      let thumb = null;
+      if(pages){
+        const first = Object.values(pages)[0];
+        if(first && first.thumbnail && first.thumbnail.source) thumb = first.thumbnail.source;
+      }
+      teamCrestCache[key] = thumb;
     } catch(e){
       teamCrestCache[key] = null;
     }
