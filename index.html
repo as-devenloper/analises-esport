@@ -2357,7 +2357,7 @@ Se não conseguir ler a odd ou os mercados no print, responda com {"erro": "moti
         resultadoHtml = `<span class="badge ${badge.cls} clickable" title="Clique para voltar a pendente" onclick="markAnaliseResult('${a.id}','pendente')">${badge.label}</span>`;
       }
       const isOpen = expandedAnaliseId === a.id;
-      const oddInfo = a.oddVista != null ? ` · odd vista ${Number(a.oddVista).toFixed(2)}${a.temValor === false ? ' (sem valor)' : ''}` : '';
+      const oddInfo = a.oddVista != null ? ` · Melhor ODD Encontrada ${Number(a.oddVista).toFixed(2)}${a.temValor === false ? ' (sem valor)' : ''}` : '';
       const dataHoraJogo = [a.dataJogo, a.horaJogo].filter(Boolean).join(' · ');
 
       const mercadosHtml = (a.mercados_avaliados && a.mercados_avaliados.length)
@@ -2412,7 +2412,7 @@ Se não conseguir ler a odd ou os mercados no print, responda com {"erro": "moti
               </div>
             </div>
             <div class="an-check-box" style="margin-top:14px;">
-              <label>Odd vista / casa de apostas (editar se encontrou melhor em outro lugar)</label>
+              <label>Melhor ODD Encontrada / casa de apostas (editar se encontrou melhor em outro lugar)</label>
               <div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap;">
                 <input type="text" inputmode="decimal" id="an-edit-odd-${a.id}" value="${a.oddVista != null ? String(a.oddVista).replace('.', ',') : ''}" placeholder="1,85" style="max-width:140px;">
                 <input type="text" id="an-edit-casa-${a.id}" list="an-casas-list" value="${a.casaAposta ? escapeHtml(a.casaAposta.nome) : ''}" placeholder="Casa de apostas" style="max-width:220px;">
