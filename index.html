@@ -739,6 +739,8 @@
     <button class="tab-btn" data-view="ganhos">Banca - Ganhos/Perdas</button>
   </nav>
 
+  <datalist id="an-casas-list"></datalist>
+
   <div class="grid" id="view-analises">
     <section class="panel">
       <h2>Enviar dados</h2>
@@ -1009,6 +1011,7 @@
     if(!list) return;
     list.innerHTML = BOOKMAKERS.map(b => `<option value="${escapeHtml(b.nome)}">`).join('');
   }
+  populateCasasList();
 
   function extractAiJson(textBlock){
     const clean = textBlock.replace(/```json|```/g, '').trim();
@@ -1470,8 +1473,12 @@ Seja objetivo em todos os campos — respostas longas correm risco de cortar o J
 
   let lastSavedAnaliseId = null;
 
-  async function saveAnalise(p){
+  async function saveAnalise(p, usage){
     try{
+      let custoUsd = null;
+      if(usage){
+        custoUsd = Math.round(((usage.input_tokens || 0) / 1e6 * 3 + (usage.output_tokens || 0) / 1e6 * 15) * 1e6) / 1e6;
+      }
       const docRef = await analisesRef.add({
         time: p.time || null,
         mercado: p.mercado || null,
@@ -1485,6 +1492,7 @@ Seja objetivo em todos os campos — respostas longas correm risco de cortar o J
         justificativa: p.justificativa || null,
         mercados_avaliados: p.mercados_avaliados || [],
         alertas: p.alertas || [],
+        custoUsd: custoUsd,
         resultado: 'pendente',
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
@@ -1555,7 +1563,6 @@ Seja objetivo em todos os campos — respostas longas correm risco de cortar o J
           <input type="text" id="an-check-casa" list="an-casas-list" placeholder="Pesquisar casa de apostas..." style="max-width:220px;">
           <button type="button" class="primary" id="an-check-btn" style="width:auto;padding:9px 16px;">Conferir valor</button>
         </div>
-        <datalist id="an-casas-list"></datalist>
         <div id="an-check-result" style="margin-top:10px;font-size:13.5px;"></div>
 
         <div class="an-check-divider"><span>ou</span></div>
@@ -1568,9 +1575,8 @@ Seja objetivo em todos os campos — respostas longas correm risco de cortar o J
         <div id="an-check-file-result" style="margin-top:10px;font-size:13.5px;"></div>
       </div>
     `;
-    populateCasasList();
 
-    saveAnalise(p);
+    saveAnalise(p, usage);
 
     const oddValorCalculada = parseFloat(String(p.odd_valor || '1.50').replace(',', '.'));
     const oddInput = document.getElementById('an-check-odd');
@@ -1755,6 +1761,38 @@ Se não conseguir ler a odd ou os mercados no print, responda com {"erro": "moti
     }
   }
 
+  async function updateAnaliseOdd(id, oddValorStr){
+    const oddInput = document.getElementById('an-edit-odd-' + id);
+    const casaInput = document.getElementById('an-edit-casa-' + id);
+    const resultEl = document.getElementById('an-edit-result-' + id);
+    const oddVista = parseFloat(oddInput.value.replace(',', '.'));
+    if(isNaN(oddVista)){
+      resultEl.style.color = 'var(--warn)';
+      resultEl.textContent = 'Digite uma odd válida.';
+      return;
+    }
+    const oddValorCalculada = parseFloat(String(oddValorStr).replace(',', '.')) || 1.5;
+    const temValor = oddVista >= oddValorCalculada;
+    const casaNome = casaInput.value.trim();
+    const casaEncontrada = BOOKMAKERS.find(b => b.nome.toLowerCase() === casaNome.toLowerCase());
+
+    const update = { oddVista, temValor };
+    if(casaEncontrada) update.casaAposta = casaEncontrada;
+    else if(!casaNome) update.casaAposta = firebase.firestore.FieldValue.delete();
+
+    try{
+      await analisesRef.doc(id).update(update);
+      resultEl.style.color = 'var(--safe)';
+      resultEl.textContent = temValor
+        ? `✓ Atualizado — ${oddVista.toFixed(2)} tem valor (mínimo ${oddValorCalculada.toFixed(2)}).`
+        : `✕ Atualizado — ${oddVista.toFixed(2)} está abaixo do valor mínimo (${oddValorCalculada.toFixed(2)}).`;
+    } catch(err){
+      console.error(err);
+      resultEl.style.color = 'var(--warn)';
+      resultEl.textContent = 'Não foi possível salvar. Confira sua conexão.';
+    }
+  }
+
   let expandedAnaliseId = null;
 
   function toggleAnaliseDetail(id){
@@ -1770,12 +1808,14 @@ Se não conseguir ler a odd ou os mercados no print, responda com {"erro": "moti
     const settled = green + red;
     const taxaAcerto = settled ? Math.round((green / settled) * 100) : 0;
     const taxaErro = settled ? Math.round((red / settled) * 100) : 0;
+    const gastoTotal = analisesAll.reduce((sum, a) => sum + (a.custoUsd || 0), 0);
     summary.innerHTML = `
       <div class="profit-card"><span class="num">${total}</span><span class="label">entradas no geral</span></div>
       <div class="profit-card"><span class="num safe">${green}</span><span class="label">green</span></div>
       <div class="profit-card"><span class="num warn">${red}</span><span class="label">red</span></div>
       <div class="profit-card"><span class="num safe">${taxaAcerto}%</span><span class="label">média de acertos</span></div>
       <div class="profit-card"><span class="num warn">${taxaErro}%</span><span class="label">média de erros</span></div>
+      <div class="profit-card"><span class="num">~US$ ${gastoTotal.toFixed(4)}</span><span class="label">gasto acumulado (estimado)</span></div>
     `;
   }
 
@@ -1844,10 +1884,25 @@ Se não conseguir ler a odd ou os mercados no print, responda com {"erro": "moti
             ${descartadosHtml}
             ${mercadosHtml}
             ${alertasHtml}
+
+            <div class="an-check-box" style="margin-top:16px;">
+              <label>Odd vista / casa de apostas (editar se encontrou melhor em outro lugar)</label>
+              <div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap;">
+                <input type="text" inputmode="decimal" id="an-edit-odd-${a.id}" value="${a.oddVista != null ? String(a.oddVista).replace('.', ',') : ''}" placeholder="1,85" style="max-width:140px;">
+                <input type="text" id="an-edit-casa-${a.id}" list="an-casas-list" value="${a.casaAposta ? escapeHtml(a.casaAposta.nome) : ''}" placeholder="Casa de apostas" style="max-width:220px;">
+                <button type="button" class="primary" style="width:auto;padding:9px 16px;" onclick="updateAnaliseOdd('${a.id}', '${escapeHtml(String(a.odd_valor || '1.50'))}')">Salvar</button>
+              </div>
+              <div id="an-edit-result-${a.id}" style="margin-top:8px;font-size:12.5px;"></div>
+            </div>
           </div>
         </div>
       `;
     }).join('');
+
+    if(expandedAnaliseId){
+      const editOddEl = document.getElementById('an-edit-odd-' + expandedAnaliseId);
+      if(editOddEl) maskDecimalInput(editOddEl);
+    }
   }
 </script>
 </body>
