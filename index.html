@@ -1362,11 +1362,11 @@
   // cai num badge com as iniciais.
   // ---------------------------------------------------------------
   let teamCrestCache = {};
-  try{ teamCrestCache = JSON.parse(localStorage.getItem('teamCrestCache') || '{}'); }catch(e){ teamCrestCache = {}; }
+  try{ teamCrestCache = JSON.parse(localStorage.getItem('teamCrestCacheV2') || '{}'); }catch(e){ teamCrestCache = {}; }
   const pendingCrestFetches = new Set();
 
   function saveCrestCache(){
-    try{ localStorage.setItem('teamCrestCache', JSON.stringify(teamCrestCache)); }catch(e){}
+    try{ localStorage.setItem('teamCrestCacheV2', JSON.stringify(teamCrestCache)); }catch(e){}
   }
 
   function splitTeams(str){
@@ -1391,7 +1391,7 @@
     const key = name.trim().toLowerCase();
     if(teamCrestCache.hasOwnProperty(key)) return teamCrestCache[key];
     try{
-      const res = await fetch('https://www.thesportsdb.com/api/v1/json/3/searchteams.php?t=' + encodeURIComponent(name));
+      const res = await fetch('https://www.thesportsdb.com/api/v1/json/123/searchteams.php?t=' + encodeURIComponent(name));
       const data = await res.json();
       const url = (data && data.teams && data.teams[0] && data.teams[0].strTeamBadge) ? data.teams[0].strTeamBadge : null;
       teamCrestCache[key] = url;
