@@ -863,7 +863,11 @@
 </head>
 <body>
 
-<div id="login-screen" class="login-screen">
+<div id="auth-loading" class="login-screen">
+  <span class="spinner"></span>
+</div>
+
+<div id="login-screen" class="login-screen" style="display:none;">
   <form id="login-form" class="login-card">
     <svg class="brand-icon" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style="width:44px;height:44px;margin-bottom:14px;">
       <rect width="64" height="64" rx="16" fill="#171d25"/>
@@ -1130,6 +1134,7 @@
   // depois de autenticado. Conta criada manualmente no Console do
   // Firebase (Authentication → Email/senha); não há autocadastro aqui.
   // ---------------------------------------------------------------
+  const authLoading = document.getElementById('auth-loading');
   const loginScreen = document.getElementById('login-screen');
   const appRoot = document.getElementById('app-root');
   const loginForm = document.getElementById('login-form');
@@ -1141,6 +1146,7 @@
   const forgotPasswordLink = document.getElementById('forgot-password-link');
 
   auth.onAuthStateChanged((user) => {
+    authLoading.style.display = 'none';
     if(user){
       loginScreen.style.display = 'none';
       appRoot.style.display = '';
