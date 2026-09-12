@@ -1362,11 +1362,11 @@
   // cai num badge com as iniciais.
   // ---------------------------------------------------------------
   let teamCrestCache = {};
-  try{ teamCrestCache = JSON.parse(localStorage.getItem('teamCrestCacheV5') || '{}'); }catch(e){ teamCrestCache = {}; }
+  try{ teamCrestCache = JSON.parse(localStorage.getItem('teamCrestCacheV6') || '{}'); }catch(e){ teamCrestCache = {}; }
   const pendingCrestFetches = new Set();
 
   function saveCrestCache(){
-    try{ localStorage.setItem('teamCrestCacheV5', JSON.stringify(teamCrestCache)); }catch(e){}
+    try{ localStorage.setItem('teamCrestCacheV6', JSON.stringify(teamCrestCache)); }catch(e){}
   }
 
   function splitTeams(str){
@@ -1424,18 +1424,32 @@
         const enTitle = entity && entity.sitelinks && entity.sitelinks.enwiki && entity.sitelinks.enwiki.title;
 
         if(enTitle){
-          // Pega a 1ª imagem do artigo — no infobox de clube de futebol,
-          // isso é praticamente sempre o escudo/logo, mesmo quando o
-          // Wikidata não tem a propriedade "logo" preenchida.
-          const parseUrl = 'https://en.wikipedia.org/w/api.php?action=parse&page=' + encodeURIComponent(enTitle)
-            + '&prop=images&format=json&origin=*';
-          const parseRes = await fetch(parseUrl);
-          const parseData = await parseRes.json();
-          const images = (parseData && parseData.parse && parseData.parse.images) || [];
-          const skip = /^(commons-logo|wiki|edit-icon|folder|question|padlock|flag_of|semi-protection|symbol_|ambox|current_event|ac_current|ooui|icon|ombox|red_x|green_tick|loudspeaker)/i;
-          const candidate = images.find(f => !skip.test(f));
-          if(candidate){
-            result = 'https://commons.wikimedia.org/wiki/Special:FilePath/' + encodeURIComponent(candidate) + '?width=100';
+          // Extrai o parâmetro de imagem direto do infobox (seção 0 do
+          // wikitext) — muito mais confiável do que listar imagens da
+          // página, que vêm em ordem alfabética e não por aparição.
+          const wtUrl = 'https://en.wikipedia.org/w/api.php?action=parse&page=' + encodeURIComponent(enTitle)
+            + '&prop=wikitext&section=0&format=json&origin=*';
+          const wtRes = await fetch(wtUrl);
+          const wtData = await wtRes.json();
+          const wikitext = wtData && wtData.parse && wtData.parse.wikitext && wtData.parse.wikitext['*'];
+          let filename = null;
+          if(wikitext){
+            const m = wikitext.match(/\|\s*(?:image|crest|logo)\s*=\s*(?:\[\[\s*(?:File|Image|Ficheiro|Arquivo)\s*:)?\s*([^\n|\]]+)/i);
+            if(m && m[1]) filename = m[1].trim();
+          }
+          if(filename){
+            result = 'https://commons.wikimedia.org/wiki/Special:FilePath/' + encodeURIComponent(filename) + '?width=100';
+          } else {
+            // Sem match no infobox — última tentativa via pageimages.
+            const imgUrl = 'https://en.wikipedia.org/w/api.php?action=query&titles=' + encodeURIComponent(enTitle)
+              + '&prop=pageimages&piprop=thumbnail&pithumbsize=100&format=json&origin=*';
+            const imgRes = await fetch(imgUrl);
+            const imgData = await imgRes.json();
+            const pages = imgData && imgData.query && imgData.query.pages;
+            if(pages){
+              const first = Object.values(pages)[0];
+              if(first && first.thumbnail && first.thumbnail.source) result = first.thumbnail.source;
+            }
           }
         }
       }
