@@ -1362,11 +1362,11 @@
   // cai num badge com as iniciais.
   // ---------------------------------------------------------------
   let teamCrestCache = {};
-  try{ teamCrestCache = JSON.parse(localStorage.getItem('teamCrestCacheV4') || '{}'); }catch(e){ teamCrestCache = {}; }
+  try{ teamCrestCache = JSON.parse(localStorage.getItem('teamCrestCacheV5') || '{}'); }catch(e){ teamCrestCache = {}; }
   const pendingCrestFetches = new Set();
 
   function saveCrestCache(){
-    try{ localStorage.setItem('teamCrestCacheV4', JSON.stringify(teamCrestCache)); }catch(e){}
+    try{ localStorage.setItem('teamCrestCacheV5', JSON.stringify(teamCrestCache)); }catch(e){}
   }
 
   function splitTeams(str){
@@ -1417,27 +1417,25 @@
       if(match){
         const qid = match.id;
         const entUrl = 'https://www.wikidata.org/w/api.php?action=wbgetentities&ids=' + qid
-          + '&props=claims|sitelinks&sitefilter=enwiki&format=json&origin=*';
+          + '&props=sitelinks&sitefilter=enwiki&format=json&origin=*';
         const entRes = await fetch(entUrl);
         const entData = await entRes.json();
         const entity = entData && entData.entities && entData.entities[qid];
-        const logoClaim = entity && entity.claims && entity.claims.P154 && entity.claims.P154[0];
-        const filename = logoClaim && logoClaim.mainsnak && logoClaim.mainsnak.datavalue && logoClaim.mainsnak.datavalue.value;
+        const enTitle = entity && entity.sitelinks && entity.sitelinks.enwiki && entity.sitelinks.enwiki.title;
 
-        if(filename){
-          result = 'https://commons.wikimedia.org/wiki/Special:FilePath/' + encodeURIComponent(filename) + '?width=100';
-        } else {
-          const enTitle = entity && entity.sitelinks && entity.sitelinks.enwiki && entity.sitelinks.enwiki.title;
-          if(enTitle){
-            const imgUrl = 'https://en.wikipedia.org/w/api.php?action=query&titles=' + encodeURIComponent(enTitle)
-              + '&prop=pageimages&piprop=thumbnail&pithumbsize=100&format=json&origin=*';
-            const imgRes = await fetch(imgUrl);
-            const imgData = await imgRes.json();
-            const pages = imgData && imgData.query && imgData.query.pages;
-            if(pages){
-              const first = Object.values(pages)[0];
-              if(first && first.thumbnail && first.thumbnail.source) result = first.thumbnail.source;
-            }
+        if(enTitle){
+          // Pega a 1ª imagem do artigo — no infobox de clube de futebol,
+          // isso é praticamente sempre o escudo/logo, mesmo quando o
+          // Wikidata não tem a propriedade "logo" preenchida.
+          const parseUrl = 'https://en.wikipedia.org/w/api.php?action=parse&page=' + encodeURIComponent(enTitle)
+            + '&prop=images&format=json&origin=*';
+          const parseRes = await fetch(parseUrl);
+          const parseData = await parseRes.json();
+          const images = (parseData && parseData.parse && parseData.parse.images) || [];
+          const skip = /^(commons-logo|wiki|edit-icon|folder|question|padlock|flag_of|semi-protection|symbol_|ambox|current_event|ac_current|ooui|icon|ombox|red_x|green_tick|loudspeaker)/i;
+          const candidate = images.find(f => !skip.test(f));
+          if(candidate){
+            result = 'https://commons.wikimedia.org/wiki/Special:FilePath/' + encodeURIComponent(candidate) + '?width=100';
           }
         }
       }
